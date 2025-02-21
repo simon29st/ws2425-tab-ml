@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 from sklearn.metrics import roc_auc_score
 
@@ -6,41 +8,55 @@ from classes import NeuralNetwork, Dataset, GroupStructure
 from math import comb
 
 
-def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size, weight_clipper=None):
-    # TODO: generate initial HPs for network
-    hp_configs = {
-        'total_layers': [3],
-        'nodes_per_hidden_layer': [3]
-    }
-    # TODO: generate initial group structures
-    gs = GroupStructure(
-        {0, 1, 2, 3, 4, 5, 6, 7},
-        {0, 1},
-        ((2, 5), 1),
-        ((4,), 0),
-        ((7, 3, 6), 1)
-    )
+def r_trunc_geom(p: float, samples: int, val_min: int = 3, val_max: int = 10):
+    a = val_min - 1
+    b = val_max
+
+    draws_unif = np.random.uniform(low=0, high=1, size=samples)
+    draws_trunc_geom = np.ceil(  # np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
+        np.log(np.pow(1 - p, a) - draws_unif * (np.pow(1 - p, a) - np.pow(1 - p, b))) / np.log(1 - p),
+    ).astype(int)
+    
+    return draws_trunc_geom
+
+
+def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
+    p = 0.5
+    population_layers = r_trunc_geom(p, mu, 3, 10)
+    population_nodes = r_trunc_geom(p, mu, 3, 20)
+    population = [{
+        'total_layers': population_layers[i].item(),
+        'nodes_per_hidden_layer': population_nodes[i].item(),
+        'group_structure': GroupStructure(  # TODO: init group structure with detectors
+            {0, 1, 2, 3, 4, 5, 6, 7},
+            {0, 1},
+            ((2, 5), 1),
+            ((4,), 0),
+            ((7, 3, 6), 1)
+        )
+    } for i in range(mu)]
 
     while(True):  # TODO: define stopping criterion + remove break from end of loop
-        total_layers = hp_configs['total_layers'][-1]
-        nodes_per_hidden_layer = hp_configs['nodes_per_hidden_layer'][-1]
+        for i, individual in enumerate(population):
+            total_layers = individual.get('total_layers')
+            nodes_per_hidden_layer = individual.get('nodes_per_hidden_layer')
+            gs = individual.get('group_structure')
 
-        print(f'running HPO: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
+            print(f'running HPO for individual {i+1}/{mu}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
+            run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
 
-        run_CV(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
+            # TODO: evaluate individual's performance + add to auc, NI, NF, NNM (mean + variance over all folds)
 
-        # TODO: evaluate performance + add to auc, NI, NF, NNM
-
-        # TODO: EA on hp_total_layers + hp_nodes
+        # TODO: EA on total_layers + nodes_per_hidden_layer
         # TODO: GGA on group structure
 
-        # until stopping criterion is met
+        # EAGGA until stopping criterion is met
         break
 
 
-def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, group_structure, epochs, batch_size, weight_clipper=None):
+def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, weight_clipper=None):
     for i, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
-        print(f'fold {i + 1} / {cv.get_n_splits()}')
+        print(f'fold {i + 1}/{cv.get_n_splits()}')
 
         data_train = data_train_test.loc[indices_train, :]
         dataset_train = Dataset(
@@ -84,10 +100,10 @@ def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, group_stru
 
 
 # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-def train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper=None, verbose=False):
+def train(optimizer, loss_fn, model: NeuralNetwork, epochs: int, dataset_train: Dataset, dataset_test: Dataset, batch_size: int, weight_clipper=None, verbose=False):
     if verbose:
         eval_loss = train_eval(loss_fn, model, dataset_test, batch_size)
-        print(f'epoch 0 / {epochs}, eval loss {eval_loss}')
+        print(f'epoch 0/{epochs}, eval loss {eval_loss}')
 
     loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=False)  # TODO: set shuffle to True
 
@@ -110,17 +126,17 @@ def train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_
         if weight_clipper is not None:  # used for monotonicity constraint
             for i, (_, monotonicity_constraint) in enumerate(model.get_group_structure().get_included_groups()):
                 if monotonicity_constraint == 1:
-                    model.networks[i].apply(weight_clipper)  # will apply weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
+                    model.networks[i].apply(weight_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
 
         if verbose:
-            print(f'epoch {epoch + 1} / {epochs}, train loss {running_epoch_loss}')
+            print(f'epoch {epoch + 1}/{epochs}, train loss {running_epoch_loss}')
             eval_loss = train_eval(loss_fn, model, dataset_test, batch_size)
-            print(f'epoch {epoch + 1} / {epochs}, eval loss {eval_loss}')
+            print(f'epoch {epoch + 1}/{epochs}, eval loss {eval_loss}')
 
 
 # evaluate for training, i.e. compute loss on test set, actual evaluation (AUC, NF, NI, NNM) will be done in separate function 'eval'
 # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-def train_eval(loss_fn, model, dataset_test, batch_size, verbose=False):
+def train_eval(loss_fn, model: NeuralNetwork, dataset_test: Dataset, batch_size: int, verbose=False) -> float:
     loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)  # no need to shuffle in test
     
     model.eval()  # eval mode
@@ -139,7 +155,7 @@ def train_eval(loss_fn, model, dataset_test, batch_size, verbose=False):
     return running_loss
 
 
-def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int):
+def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
     loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)
     
     model.eval()
@@ -176,7 +192,3 @@ def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int):
     nnm = num_features_unconstrained / num_features_all  # via gs: (# of features in groups without monotonicity constraint) / (total # of features)
     
     return auc.item(), nf, ni, nnm
-
-
-def eval_nn_eagga(task_train, task_test):
-    pass

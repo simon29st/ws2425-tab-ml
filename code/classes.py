@@ -96,6 +96,10 @@ class GroupStructure:
 
         if all_features != self.all_features:
             raise Exception('feature mismatch', all_features, 'vs', self.all_features)
+        
+
+    def __str__(self):
+        return f'({self.excluded}, {self.included})'
     
 
     def get_number_of_included_groups(self):
@@ -126,10 +130,10 @@ class GroupStructure:
         return self.all_features
     
 
-    def ea_mutate(slf):
+    def gga_mutate(slf):
         pass  # TODO
 
 
     @classmethod
-    def ea_crossover(cls):
+    def gga_crossover(cls):
         pass  # TODO
