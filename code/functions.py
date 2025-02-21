@@ -1,6 +1,9 @@
 import torch
+from sklearn.metrics import roc_auc_score
 
-from classes import NeuralNetwork, Dataset, GroupStructure, WeightClipper
+from classes import NeuralNetwork, Dataset, GroupStructure
+
+from math import comb
 
 
 def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size, weight_clipper=None):
@@ -67,7 +70,10 @@ def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, group_stru
 
         train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper, verbose=True)
 
+        metrics = eval(model, dataset_test, batch_size)
+
         # TODO: remove debug output, this is to check network for non-neg weights (for monotonicity constraint)
+        print(metrics)
         print(model)
         for i, network in enumerate(model.networks):
             print(f'Network {i+1}')
@@ -133,13 +139,43 @@ def train_eval(loss_fn, model, dataset_test, batch_size, verbose=False):
     return running_loss
 
 
-# TODO: evaluate 
-def eval():
-    auc = ''  # directly based on model
-    nf = ''  # get from group structure: # of included features
-    ni = ''  # get from group structure: (# of feature in groups) / (total # of features)
-    nnm = ''  # get from group structure: (# of features in groups with M_(E_k) = 1) / (total # of features)
-    return auc, nf, ni, nnm
+def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int):
+    loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)
+    
+    model.eval()
+
+    batch_predictions = list()
+    batch_targets = list()
+    for batch_input, batch_target in loader_test:
+        with torch.no_grad():
+            batch_output = model(*batch_input).flatten()
+        batch_prediction = torch.sigmoid(batch_output)
+
+        batch_predictions.append(batch_prediction)
+        batch_targets.append(batch_target)
+    predictions = torch.cat(batch_predictions)
+    targets = torch.cat(batch_targets)
+
+    auc = roc_auc_score(targets, predictions)
+    
+    gs = model.get_group_structure()
+    num_features_all = len(gs.get_all_features())
+    num_features_included = len(gs.get_included_features())
+    num_features_unconstrained = len(gs.get_unconstrained_features())
+
+    nf = num_features_included / num_features_all  # via gs: relative # of included features
+    ni = 0  # via gs:
+    # for each group with > 1 features: sum over range from 1 to (# of features in group - 1) -> # handshakes in party -> n choose 2
+    # then divide by # of all possible interactions (all_features choose 2)
+    for (features, _) in gs.get_included_groups():
+        num_features_in_group = len(features)
+        if num_features_in_group > 1:
+            #ni += sum(range(1, num_features_in_group))
+            ni += comb(num_features_in_group, 2)
+    ni /= comb(num_features_all, 2)
+    nnm = num_features_unconstrained / num_features_all  # via gs: (# of features in groups without monotonicity constraint) / (total # of features)
+    
+    return auc.item(), nf, ni, nnm
 
 
 def eval_nn_eagga(task_train, task_test):

@@ -106,8 +106,24 @@ class GroupStructure:
         return self.included
     
 
-    def get_included_groups_features(self):  # only get feature sets of the groups
+    def get_included_groups_features(self) -> tuple:  # only get feature sets of the groups
         return tuple(group[0] for group in self.included)
+    
+
+    def get_included_features(self) -> set:
+        return set(feature for group in self.included for feature in group[0])
+    
+
+    def get_unconstrained_groups(self):  # groups without monotonicity constraint
+        return tuple(group for group in self.included if group[1] == 0)
+    
+
+    def get_unconstrained_features(self):  # features of groups without monotonicity constraint
+        return set(feature for group in self.get_unconstrained_groups() for feature in group[0])
+    
+
+    def get_all_features(self) -> set:
+        return self.all_features
     
 
     def ea_mutate(slf):
