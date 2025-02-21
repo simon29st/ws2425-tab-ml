@@ -4,45 +4,83 @@ from torch import nn
 import pandas as pd
 
 
-# TODO: add #groups argument and split the features to their respective nets like so: https://discuss.pytorch.org/t/grouping-some-features-before-going-to-fully-connected-layers/162444/5
 class NeuralNetwork(nn.Module):
-    def __init__(self, input_size, output_size, total_layers, nodes_per_hidden_layer):
+    def __init__(self, group_structure, output_size, total_layers, nodes_per_hidden_layer):
         super().__init__()
 
-        # input layer
-        layers = list()
-        layers.append(nn.Linear(input_size, nodes_per_hidden_layer))
-        layers.append(nn.ReLU())
+        self.group_structure = group_structure
 
-        # hidden layers
-        for _ in range(1, total_layers-1):
-            layers.append(nn.Linear(nodes_per_hidden_layer, nodes_per_hidden_layer))
-            layers.append(nn.ReLU())
+        # split input into multiple networks (depending on group structure), cf. https://discuss.pytorch.org/t/implement-selected-sparse-connected-neural-network/45517/2
+        self.networks = nn.ModuleList()
 
-        # output layer, without activation (loss function includes activation)
-        layers.append(nn.Linear(nodes_per_hidden_layer, output_size))
-        
-        self.net = nn.Sequential(*layers)
+        # one network per group in group_structure
+        for (features, _) in self.group_structure.get_included_groups():
+            modules = list()
+
+            # input layer
+            modules.append(nn.Linear(len(features), nodes_per_hidden_layer))
+            modules.append(nn.ReLU())
+
+            # hidden layers
+            for _ in range(1, total_layers-1):
+                modules.append(nn.Linear(nodes_per_hidden_layer, nodes_per_hidden_layer))
+                modules.append(nn.ReLU())
+            
+            network_for_group = nn.Sequential(*modules)
+            self.networks.append(network_for_group)
+
+        # output layer, without activation (loss function already includes activation)
+        self.layer_out = nn.Linear(nodes_per_hidden_layer * self.group_structure.get_number_of_included_groups(), output_size)
+            
+
+    def forward(self, *xs):  # xs (list) as this receives one "x tensor" per group in group_structure
+        output_networks = list()
+        for i, x in enumerate(xs):
+            output_networks.append(self.networks[i](x))
+        return self.layer_out(torch.cat(output_networks, 1))
     
 
-    def forward(self, x):
-        return self.net(x)
+    def get_networks(self):
+        return self.networks
+    
+
+    def get_group_structure(self):
+        return self.group_structure
+
+
+# cf .https://stackoverflow.com/a/70330290
+class WeightClipper:
+    def __init__(self, w_min: int, w_max: int):
+        self.w_min = w_min
+        self.w_max = w_max
+    
+
+    def __call__(self, module: nn.Module):
+        if hasattr(module, 'weight'):
+            w = module.weight.data
+            w = w.clamp(self.w_min, self.w_max)
+            module.weight.data = w
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, X: pd.DataFrame, y: pd.Series, class_pos: str):
+    def __init__(self, X: pd.DataFrame, y: pd.Series, class_pos: str, group_structure):
         self.X = torch.tensor(X.values, dtype=torch.float)
+
         self.y = torch.zeros(len(y.index))
         self.y[y.reset_index(drop=True) == class_pos] = 1
+        
+        self.feature_groups = group_structure.get_included_groups_features()
+
 
     def __len__(self):
         return self.X.shape[0]
 
+
     def __getitem__(self, idx: int):
-        return self.X[idx], self.y[idx]
+        return tuple(self.X[idx, group] for group in self.feature_groups), self.y[idx]
 
 
-class GroupStructure():
+class GroupStructure:
     def __init__(self, all_features: set, excluded: set, *included):
         self.all_features = set()
 
@@ -50,7 +88,7 @@ class GroupStructure():
         self.all_features.update(self.excluded)
 
         for g_k in included:
-            if isinstance(g_k, tuple) and len(g_k) == 2 and isinstance(g_k[0], set) and isinstance(g_k[1], int) and g_k[1] in {0, 1}:
+            if isinstance(g_k, tuple) and len(g_k) == 2 and isinstance(g_k[0], tuple) and isinstance(g_k[1], int) and g_k[1] in {0, 1}:
                 self.all_features.update(g_k[0])
             else:
                 raise Exception('invalid group', g_k)
@@ -59,12 +97,23 @@ class GroupStructure():
         if all_features != self.all_features:
             raise Exception('feature mismatch', all_features, 'vs', self.all_features)
     
+
     def get_number_of_included_groups(self):
         return len(self.included)
     
-    def mutate(slf):
+
+    def get_included_groups(self):
+        return self.included
+    
+
+    def get_included_groups_features(self):  # only get feature sets of the groups
+        return tuple(group[0] for group in self.included)
+    
+
+    def ea_mutate(slf):
         pass  # TODO
 
+
     @classmethod
-    def crossover(cls):
+    def ea_crossover(cls):
         pass  # TODO

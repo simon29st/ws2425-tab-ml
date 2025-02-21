@@ -1,9 +1,9 @@
 import torch
 
-from classes import NeuralNetwork, Dataset, GroupStructure
+from classes import NeuralNetwork, Dataset, GroupStructure, WeightClipper
 
 
-def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size):
+def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size, weight_clipper=None):
     # TODO: generate initial HPs for network
     hp_configs = {
         'total_layers': [3],
@@ -13,9 +13,9 @@ def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size):
     gs = GroupStructure(
         {0, 1, 2, 3, 4, 5, 6, 7},
         {0, 1},
-        ({2, 3}, 1),
-        ({4}, 0),
-        ({5, 6, 7}, 1)
+        ((2, 5), 1),
+        ((4,), 0),
+        ((7, 3, 6), 1)
     )
 
     while(True):  # TODO: define stopping criterion + remove break from end of loop
@@ -24,7 +24,7 @@ def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size):
 
         print(f'running HPO: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
 
-        run_CV(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, epochs, batch_size)
+        run_CV(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
 
         # TODO: evaluate performance + add to auc, NI, NF, NNM
 
@@ -35,7 +35,7 @@ def run_HPO_CV(cv_inner, data_train_test, epochs, batch_size):
         break
 
 
-def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, epochs, batch_size):
+def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, group_structure, epochs, batch_size, weight_clipper=None):
     for i, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
         print(f'fold {i + 1} / {cv.get_n_splits()}')
 
@@ -43,18 +43,20 @@ def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, epochs, ba
         dataset_train = Dataset(
             X=data_train.loc[:, data_train.columns != 'class'],
             y=data_train.loc[:, 'class'],
-            class_pos='tested_positive'
+            class_pos='tested_positive',
+            group_structure=group_structure
         )
 
         data_test = data_train_test.loc[indices_test, :]
         dataset_test = Dataset(
             X=data_test.loc[:, data_test.columns != 'class'],
             y=data_test.loc[:, 'class'],
-            class_pos='tested_positive'
+            class_pos='tested_positive',
+            group_structure=group_structure
         )
 
         model = NeuralNetwork(
-            input_size=len(data_train_test.columns) - 1,
+            group_structure=group_structure,
             output_size=1,  # we only use binary datasets
             total_layers=total_layers,
             nodes_per_hidden_layer=nodes_per_hidden_layer
@@ -63,11 +65,20 @@ def run_CV(cv, data_train_test, total_layers, nodes_per_hidden_layer, epochs, ba
         optimizer = torch.optim.AdamW(model.parameters())
         loss_fn = torch.nn.BCEWithLogitsLoss()
 
-        train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, verbose=True)
+        train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper, verbose=True)
+
+        # TODO: remove debug output, this is to check network for non-neg weights (for monotonicity constraint)
+        print(model)
+        for i, network in enumerate(model.networks):
+            print(f'Network {i+1}')
+            for j, layer in enumerate(network):
+                if hasattr(layer, 'weight'):
+                    print(f'Layer {j+1}')
+                    print(layer.weight, layer.weight.shape)
 
 
 # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-def train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, verbose=False):
+def train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper=None, verbose=False):
     if verbose:
         eval_loss = train_eval(loss_fn, model, dataset_test, batch_size)
         print(f'epoch 0 / {epochs}, eval loss {eval_loss}')
@@ -80,14 +91,20 @@ def train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_
 
         for batch_input, batch_target in loader_train:  # divide data in mini batches
             optimizer.zero_grad()  # set gradients to 0
-            batch_output = model(batch_input).flatten()
+            batch_output = model(*batch_input).flatten()  # expand batch_input as it is a list of tuples (Dataset getter splits according to group structure)
 
             batch_loss = loss_fn(batch_output, batch_target)
             running_epoch_loss += batch_loss.detach().item()
             batch_loss.backward()  # compute gradients
 
             optimizer.step()  # update weights
+
         running_epoch_loss /= len(loader_train)
+
+        if weight_clipper is not None:  # used for monotonicity constraint
+            for i, (_, monotonicity_constraint) in enumerate(model.get_group_structure().get_included_groups()):
+                if monotonicity_constraint == 1:
+                    model.networks[i].apply(weight_clipper)  # will apply weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
 
         if verbose:
             print(f'epoch {epoch + 1} / {epochs}, train loss {running_epoch_loss}')
@@ -105,7 +122,7 @@ def train_eval(loss_fn, model, dataset_test, batch_size, verbose=False):
 
     for batch_input, batch_target in loader_test:
         with torch.no_grad():
-            batch_output = model(batch_input).flatten()
+            batch_output = model(*batch_input).flatten()
             
         batch_loss = loss_fn(batch_output, batch_target)
         running_loss += batch_loss.detach().item()
