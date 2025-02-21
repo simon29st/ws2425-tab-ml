@@ -19,12 +19,8 @@ class NeuralNetwork(nn.Module):
             layers.append(nn.Linear(nodes_per_hidden_layer, nodes_per_hidden_layer))
             layers.append(nn.ReLU())
 
-        # output layer
+        # output layer, without activation (loss function includes activation)
         layers.append(nn.Linear(nodes_per_hidden_layer, output_size))
-        #if total_layers == 1:
-        #    layers.append(nn.Sigmoid())
-        #else:
-        #    layers.append(nn.Softmax())
         
         self.net = nn.Sequential(*layers)
     
@@ -46,11 +42,29 @@ class Dataset(torch.utils.data.Dataset):
         return self.X[idx], self.y[idx]
 
 
-def eval_nn_eagga(task_train, task_test):
-    pass
+class GroupStructure():
+    def __init__(self, all_features: set, excluded: set, *included):
+        self.all_features = set()
 
+        self.excluded = excluded
+        self.all_features.update(self.excluded)
 
-if __name__ == '__main__':
-    eval_nn_eagga()
-    nn = NeuralNetwork(10, 1, 5, 10)
-    print(nn)
+        for g_k in included:
+            if isinstance(g_k, tuple) and len(g_k) == 2 and isinstance(g_k[0], set) and isinstance(g_k[1], int) and g_k[1] in {0, 1}:
+                self.all_features.update(g_k[0])
+            else:
+                raise Exception('invalid group', g_k)
+        self.included = included
+
+        if all_features != self.all_features:
+            raise Exception('feature mismatch', all_features, 'vs', self.all_features)
+    
+    def get_number_of_included_groups(self):
+        return len(self.included)
+    
+    def mutate(slf):
+        pass  # TODO
+
+    @classmethod
+    def crossover(cls):
+        pass  # TODO
