@@ -3,27 +3,17 @@ import numpy as np
 import torch
 from sklearn.metrics import roc_auc_score
 
-from classes import NeuralNetwork, Dataset, GroupStructure
+from classes import NeuralNetwork, Dataset, GroupStructure, Prob
 
 from math import comb
 
-
-def r_trunc_geom(p: float, samples: int, val_min: int = 3, val_max: int = 10):
-    a = val_min - 1
-    b = val_max
-
-    draws_unif = np.random.uniform(low=0, high=1, size=samples)
-    draws_trunc_geom = np.ceil(  # np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
-        np.log(np.pow(1 - p, a) - draws_unif * (np.pow(1 - p, a) - np.pow(1 - p, b))) / np.log(1 - p),
-    ).astype(int)
-    
-    return draws_trunc_geom
+from nds import ndomsort
 
 
 def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
     p = 0.5
-    population_layers = r_trunc_geom(p, mu, 3, 10)
-    population_nodes = r_trunc_geom(p, mu, 3, 20)
+    population_layers = Prob.r_trunc_geom(p, mu, 3, 10)
+    population_nodes = Prob.r_trunc_geom(p, mu, 3, 20)
     population = [{
         'total_layers': population_layers[i].item(),
         'nodes_per_hidden_layer': population_nodes[i].item(),
@@ -38,14 +28,16 @@ def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, we
 
     while(True):  # TODO: define stopping criterion + remove break from end of loop
         for i, individual in enumerate(population):
-            total_layers = individual.get('total_layers')
-            nodes_per_hidden_layer = individual.get('nodes_per_hidden_layer')
-            gs = individual.get('group_structure')
+            total_layers = individual['total_layers']
+            nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
+            gs = individual['group_structure']
 
             print(f'running HPO for individual {i+1}/{mu}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
-            run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
+            metrics = run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
 
-            # TODO: evaluate individual's performance + add to auc, NI, NF, NNM (mean + variance over all folds)
+            population[i]['metrics'] = metrics
+        
+        binary_tournament(population)
 
         # TODO: EA on total_layers + nodes_per_hidden_layer
         # TODO: GGA on group structure
@@ -55,6 +47,8 @@ def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, we
 
 
 def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, weight_clipper=None):
+    metrics = list()
+
     for i, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
         print(f'fold {i + 1}/{cv.get_n_splits()}')
 
@@ -84,19 +78,18 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
         optimizer = torch.optim.AdamW(model.parameters())
         loss_fn = torch.nn.BCEWithLogitsLoss()
 
-        train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper, verbose=True)
+        train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper)#, verbose=True)
 
-        metrics = eval(model, dataset_test, batch_size)
+        metrics.append(eval(model, dataset_test, batch_size))
 
-        # TODO: remove debug output, this is to check network for non-neg weights (for monotonicity constraint)
-        print(metrics)
-        print(model)
-        for i, network in enumerate(model.networks):
-            print(f'Network {i+1}')
-            for j, layer in enumerate(network):
-                if hasattr(layer, 'weight'):
-                    print(f'Layer {j+1}')
-                    print(layer.weight, layer.weight.shape)
+        # TODO: remove debug metrics output
+        print(metrics[-1])
+
+    return {
+        'mean': np.mean(metrics, axis=0),
+        'var': np.var(metrics, axis=0),
+        'folds': metrics
+    }
 
 
 # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
@@ -192,3 +185,26 @@ def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
     nnm = num_features_unconstrained / num_features_all  # via gs: (# of features in groups without monotonicity constraint) / (total # of features)
     
     return auc.item(), nf, ni, nnm
+
+
+def binary_tournament(population):
+    '''
+    steps
+    (1) sample (without replacement) two random ids from population
+    (2) non-dominated sorting -> rank pareto fronts
+    (3)
+    (a) if the sampled ids are in differently ranked pareto fronts -> return ordered by their front's rank
+    (b) else (sampled ids are from same pareto front)
+    (i)     compute crowding distance
+    (ii)    return ids in decreasing order (ordered by their crowding distance)
+    '''
+    # (1)
+    ids = np.random.choice(a=len(population), size=2, replace=False)#.tolist()
+    # (2)
+    ranks_nds = ndomsort.non_domin_sort([individual['metrics']['mean'] for individual in population], only_front_indices=True)
+    # (3)
+    if ranks_nds[ids[0]] != ranks_nds[ids[1]]:  # (a)
+        return sorted(ids, key=lambda id: ranks_nds[id], reverse=True)  # descending order
+    else:  # (b)
+        # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance
+        return ids

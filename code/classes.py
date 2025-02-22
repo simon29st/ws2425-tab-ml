@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+import numpy as np
 import pandas as pd
 
 
@@ -135,5 +136,19 @@ class GroupStructure:
 
 
     @classmethod
-    def gga_crossover(cls):
+    def gga_crossover(cls, parent_1, parent_2):
         pass  # TODO
+
+
+class Prob:
+    @staticmethod
+    def r_trunc_geom(p: float, samples: int, val_min: int = 3, val_max: int = 10):
+        a = val_min - 1
+        b = val_max
+
+        draws_unif = np.random.uniform(low=0, high=1, size=samples)
+        draws_trunc_geom = np.ceil(  # np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
+            np.log(np.pow(1 - p, a) - draws_unif * (np.pow(1 - p, a) - np.pow(1 - p, b))) / np.log(1 - p),
+        ).astype(int)
+        
+        return draws_trunc_geom
