@@ -10,7 +10,7 @@ from math import comb
 from nds import ndomsort
 
 
-def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
+def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
     p = 0.5
     population_layers = Prob.r_trunc_geom(p, mu, 3, 10)
     population_nodes = Prob.r_trunc_geom(p, mu, 3, 20)
@@ -37,10 +37,8 @@ def run_eagga_cv(mu, cv_inner, data_train_test, epochs: int, batch_size: int, we
 
             population[i]['metrics'] = metrics
         
-        binary_tournament(population)
-
-        # TODO: EA on total_layers + nodes_per_hidden_layer
-        # TODO: GGA on group structure
+        offspring = generate_offspring(la, population)
+        # TODO: only evaluate offspring in next iteration and discard worst >lambda< (la) from union(population, offspring)
 
         # EAGGA until stopping criterion is met
         break
@@ -204,7 +202,39 @@ def binary_tournament(population):
     ranks_nds = ndomsort.non_domin_sort([individual['metrics']['mean'] for individual in population], only_front_indices=True)
     # (3)
     if ranks_nds[ids[0]] != ranks_nds[ids[1]]:  # (a)
+        return ids
         return sorted(ids, key=lambda id: ranks_nds[id], reverse=True)  # descending order
     else:  # (b)
         # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance
         return ids
+
+
+def generate_offspring(la, population):
+    offspring = list()
+
+    for i in range(la):
+        id_parent_1, id_parent_2 = binary_tournament(population)
+        parent_1 = population[id_parent_1]
+        parent_2 = population[id_parent_2]
+
+        child_1 = parent_1.copy()
+        child_2 = parent_2.copy()
+
+        # EA on hyperparams
+        # uniform crossover
+        if Prob.should_do(p=0.7):
+            if Prob.should_do(p=0.5):
+                child_1['total_layers'] = parent_2['total_layers']
+                child_2['total_layers'] = parent_1['total_layers']
+            if Prob.should_do(p=0.5):
+                child_1['nodes_per_hidden_layer'] = parent_2['nodes_per_hidden_layer']
+                child_2['nodes_per_hidden_layer'] = parent_1['nodes_per_hidden_layer']
+        # Gaussian uniform or discrete mutation
+        if Prob.should_do(p=0.3):
+            # TODO: implement
+            pass
+
+        # GGA on group structure
+        # TODO: implement
+
+    return offspring

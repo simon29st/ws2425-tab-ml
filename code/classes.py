@@ -132,12 +132,12 @@ class GroupStructure:
     
 
     def gga_mutate(slf):
-        pass  # TODO
+        pass  # TODO: implement
 
 
     @classmethod
     def gga_crossover(cls, parent_1, parent_2):
-        pass  # TODO
+        pass  # TODO: implement
 
 
 class Prob:
@@ -152,3 +152,8 @@ class Prob:
         ).astype(int)
         
         return draws_trunc_geom
+    
+
+    @staticmethod
+    def should_do(p: float):
+        return np.random.uniform() <= p
