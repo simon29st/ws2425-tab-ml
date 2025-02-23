@@ -44,7 +44,8 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int
             population[i]['metrics'] = metrics
         
         offspring = generate_offspring(la, population, hp_bounds)
-        print(offspring)
+        for ind in offspring:
+            print(ind, ind['group_structure'])
         # TODO: only evaluate offspring in next iteration and discard worst >lambda< (la) from union(population, offspring)
 
         # EAGGA until stopping criterion is met
@@ -228,36 +229,25 @@ def generate_offspring(la, population, hp_bounds):
         del child_1['metrics']
         del child_2['metrics']
 
-        print('---')
-        print(child_1, child_1['group_structure'])
-        print(child_2, child_2['group_structure'])
-
         # EA on hyperparams
         if Prob.should_do(Prob.p_ea_crossover_overall):  # uniform crossover
-            print('EA crossover overall')
             if Prob.should_do(Prob.p_ea_crossover_param):
-                print('EA crossover total_layers')
                 child_1['total_layers'] = parent_2['total_layers']
                 child_2['total_layers'] = parent_1['total_layers']
             if Prob.should_do(Prob.p_ea_crossover_param):
-                print('EA crossover nodes_per_hidden_layer')
                 child_1['nodes_per_hidden_layer'] = parent_2['nodes_per_hidden_layer']
                 child_2['nodes_per_hidden_layer'] = parent_1['nodes_per_hidden_layer']
         for child in [child_1, child_2]:  # Gaussian mutation
             if Prob.should_do(Prob.p_ea_mutate_overall):
-                print(f'EA mutation overall {child}')
                 if Prob.should_do(Prob.p_ea_mutate_param):
-                    print('EA mutation total_layers')
                     child['total_layers'] = ea_mutate_gaussian(child['total_layers'], hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
                     child['total_layers'] = round(child['total_layers'])
                 if Prob.should_do(Prob.p_ea_mutate_param):
-                    print('EA mutation nodes_per_hidden_layer')
                     child['nodes_per_hidden_layer'] = ea_mutate_gaussian(child['nodes_per_hidden_layer'], hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
                     child['nodes_per_hidden_layer'] = round(child['nodes_per_hidden_layer'])
 
         # GGA on group structure
         if Prob.should_do(Prob.p_gga_crossover):  # crossover
-            print('GGA crossover overall')
             gs_1 = child_1['group_structure']
             gs_2 = child_2['group_structure']
             gs_1, gs_2 = GroupStructure.gga_crossover(gs_1, gs_2)
@@ -265,12 +255,7 @@ def generate_offspring(la, population, hp_bounds):
             child_2['group_structure'] = gs_2
         for child in [child_1, child_2]:  # mutate
             if Prob.should_do(Prob.p_gga_mutate_overall):
-                print(f'GGA mutation overall {child}')
                 child['group_structure'].gga_mutate()
-        
-        print(child_1, child_1['group_structure'])
-        print(child_2, child_2['group_structure'])
-        print('---')
 
         offspring.append(child_1)
         offspring.append(child_2)

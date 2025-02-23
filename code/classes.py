@@ -207,26 +207,18 @@ class GroupStructure:
 
     @classmethod
     def gga_crossover(cls, parent_1, parent_2):
-        print(parent_1, len(parent_1))
-        print(parent_2, len(parent_2))
-
         bounds_1 = sorted(np.random.randint(low=0, high=len(parent_1), size=2))
         bounds_2 = sorted(np.random.randint(low=0, high=len(parent_2), size=2))
-        print(bounds_1)
-        print(bounds_2)
 
         crossing_section_1 = parent_1.get_crossing_section(bounds_1)
         crossing_section_2 = parent_2.get_crossing_section(bounds_2)
-        print(crossing_section_1)
-        print(crossing_section_2)
 
         child_1 = deepcopy(parent_1)
         child_2 = deepcopy(parent_2)
 
         child_1.insert_crossing_section(crossing_section_2)
         child_2.insert_crossing_section(crossing_section_1)
-        print(child_1)
-        print(child_2)
+
 
         return child_1, child_2
 
@@ -258,5 +250,5 @@ class Prob:
 
     @staticmethod
     def should_do(p: float):
-        return True  # TODO: remove line after implementing EA + GGA / offspring creation
+        return 1  # TODO: remove
         return np.random.uniform() <= p
