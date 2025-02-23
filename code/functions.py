@@ -199,10 +199,10 @@ def binary_tournament(population):
     (1) sample (without replacement) two random ids from population
     (2) non-dominated sorting -> rank pareto fronts
     (3)
-    (a) if the sampled ids are in differently ranked pareto fronts -> return ordered by their front's rank
+    (a) if the sampled ids are in differently ranked pareto fronts -> return id with lower pareto front rank
     (b) else (sampled ids are from same pareto front)
     (i)     compute crowding distance
-    (ii)    return ids in decreasing order (ordered by their crowding distance)
+    (ii)    return id with larger crowding distance
     '''
     # (1)
     ids = np.random.choice(a=len(population), size=2, replace=False)#.tolist()
@@ -210,17 +210,18 @@ def binary_tournament(population):
     ranks_nds = ndomsort.non_domin_sort([individual['metrics']['mean'] for individual in population], only_front_indices=True)
     # (3)
     if ranks_nds[ids[0]] != ranks_nds[ids[1]]:  # (a)
-        return sorted(ids, key=lambda id: ranks_nds[id], reverse=True)  # descending order
+        return sorted(ids, key=lambda id: ranks_nds[id], reverse=True)[0]  # descending order
     else:  # (b)
-        # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance
-        return ids
+        # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance, computation cf. https://de.mathworks.com/matlabcentral/fileexchange/65809-on-the-calculation-of-crowding-distance
+        return ids[0]
 
 
 def generate_offspring(la, population, hp_bounds):
     offspring = list()
 
     while len(offspring) <= la:
-        id_parent_1, id_parent_2 = binary_tournament(population)
+        id_parent_1 = binary_tournament(population)
+        id_parent_2 = binary_tournament(population)
         parent_1 = population[id_parent_1]
         parent_2 = population[id_parent_2]
 
