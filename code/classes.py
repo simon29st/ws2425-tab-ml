@@ -4,6 +4,8 @@ from torch import nn
 import numpy as np
 import pandas as pd
 
+from copy import deepcopy
+
 
 class NeuralNetwork(nn.Module):
     def __init__(self, group_structure, output_size, total_layers, nodes_per_hidden_layer):
@@ -94,7 +96,7 @@ class GroupStructure:
                 self.all_features.update(g_k[0])
             else:
                 raise Exception('invalid group', g_k)
-        self.included = included
+        self.included = list(included)
 
         if all_features != self.all_features:
             raise Exception('feature mismatch', all_features, 'vs', self.all_features)
@@ -102,6 +104,10 @@ class GroupStructure:
 
     def __str__(self):
         return f'({self.excluded}, {self.included})'
+    
+
+    def __len__(self):
+        return 1 + len(self.included)
     
 
     def get_number_of_included_groups(self):
@@ -155,11 +161,74 @@ class GroupStructure:
         for i, group in enumerate(copy_included):
             if Prob.should_do(Prob.p_gga_mutate_monotonicity):
                 self.included[i][1] = np.random.randint(low=-1, high=2, size=1).item()
+    
+
+    def get_crossing_section(self, bounds: list) -> list:
+        crossing_section = list()
+
+        lower, upper = bounds
+        if lower == 0:
+            crossing_section.append(self.excluded)
+            lower += 1
+        
+        crossing_section += self.included[lower-1:upper]
+        return crossing_section
+    
+
+    def insert_crossing_section(self, crossing_section):
+        features_to_insert = set()
+        for group in crossing_section:
+            if isinstance(group, set):  # exclusion group in crossing section
+                features_to_insert.update(group)
+            else:  # "regular" group
+                for feature in group[0]:
+                    features_to_insert.add(feature)
+        
+        # remove features to be inserted form current groups
+        for feature in features_to_insert:
+            self.excluded.discard(feature)
+        for group in self.included:
+            group[0] = [feature for feature in group[0] if feature not in features_to_insert]
+        
+        # remove empty "included" groups (excluded would remain as a ~placeholder if empty)
+        included = deepcopy(self.included)
+        for i in range(len(self.included)-1, -1, -1):  # go from back to front so indices to remove are still valid after consecutive removals
+            if len(self.included[i][0]) == 0:
+                del included[i]
+        self.included = included
+        
+        # insert crossing section
+        for group in crossing_section:
+            if isinstance(group, set):  # exclusion group in crossing section
+                self.excluded.update(group)
+            else:  # "regular" group
+                self.included.append(group)
 
 
     @classmethod
     def gga_crossover(cls, parent_1, parent_2):
-        return parent_1, parent_2  # TODO: implement
+        print(parent_1, len(parent_1))
+        print(parent_2, len(parent_2))
+
+        bounds_1 = sorted(np.random.randint(low=0, high=len(parent_1), size=2))
+        bounds_2 = sorted(np.random.randint(low=0, high=len(parent_2), size=2))
+        print(bounds_1)
+        print(bounds_2)
+
+        crossing_section_1 = parent_1.get_crossing_section(bounds_1)
+        crossing_section_2 = parent_2.get_crossing_section(bounds_2)
+        print(crossing_section_1)
+        print(crossing_section_2)
+
+        child_1 = deepcopy(parent_1)
+        child_2 = deepcopy(parent_2)
+
+        child_1.insert_crossing_section(crossing_section_2)
+        child_2.insert_crossing_section(crossing_section_1)
+        print(child_1)
+        print(child_2)
+
+        return child_1, child_2
 
 
 class Prob:
