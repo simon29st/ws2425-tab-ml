@@ -93,7 +93,10 @@ class GroupStructure:
 
         for g_k in included:
             if isinstance(g_k, list) and len(g_k) == 2 and isinstance(g_k[0], list) and isinstance(g_k[1], int) and g_k[1] in {-1, 0, 1}:
-                self.all_features.update(g_k[0])
+                if any(feature in self.all_features for feature in g_k[0]):
+                    raise Exception(f'a feature in group {g_k} has already been used in another group in this group structure')
+                else:
+                    self.all_features.update(g_k[0])
             else:
                 raise Exception('invalid group', g_k)
         self.included = list(included)
@@ -224,6 +227,8 @@ class GroupStructure:
 
 
 class Prob:
+    p_sample_hps = 0.5
+
     p_ea_crossover_overall = 0.7
     p_ea_crossover_param = 0.5
     p_ea_mutate_overall = 0.3

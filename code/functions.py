@@ -12,14 +12,13 @@ from nds import ndomsort
 
 
 def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
-    p = 0.5
     hp_bounds = {
         'total_layers': (3, 10),
         'nodes_per_hidden_layer': (3, 20)
     }
 
-    population_layers = Prob.r_trunc_geom(p, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
-    population_nodes = Prob.r_trunc_geom(p, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
+    population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
+    population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
     population = [{
         'total_layers': population_layers[i].item(),
         'nodes_per_hidden_layer': population_nodes[i].item(),
