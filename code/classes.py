@@ -78,6 +78,7 @@ class Dataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, idx: int):
+        # TODO: incorporate monotonicity effect
         return tuple(self.X[idx, group] for group in self.feature_groups), self.y[idx]
 
 
@@ -89,7 +90,7 @@ class GroupStructure:
         self.all_features.update(self.excluded)
 
         for g_k in included:
-            if isinstance(g_k, tuple) and len(g_k) == 2 and isinstance(g_k[0], tuple) and isinstance(g_k[1], int) and g_k[1] in {0, 1}:
+            if isinstance(g_k, list) and len(g_k) == 2 and isinstance(g_k[0], list) and isinstance(g_k[1], int) and g_k[1] in {-1, 0, 1}:
                 self.all_features.update(g_k[0])
             else:
                 raise Exception('invalid group', g_k)
@@ -111,8 +112,8 @@ class GroupStructure:
         return self.included
     
 
-    def get_included_groups_features(self) -> tuple:  # only get feature sets of the groups
-        return tuple(group[0] for group in self.included)
+    def get_included_groups_features(self) -> list:  # only get feature sets of the groups
+        return [group[0] for group in self.included]
     
 
     def get_included_features(self) -> set:
@@ -120,7 +121,7 @@ class GroupStructure:
     
 
     def get_unconstrained_groups(self):  # groups without monotonicity constraint
-        return tuple(group for group in self.included if group[1] == 0)
+        return [group for group in self.included if group[1] == 0]
     
 
     def get_unconstrained_features(self):  # features of groups without monotonicity constraint
@@ -131,16 +132,48 @@ class GroupStructure:
         return self.all_features
     
 
-    def gga_mutate(slf):
-        pass  # TODO: implement
+    def gga_mutate(self):
+        copy_excluded = self.excluded.copy()
+        copy_included = self.included[:]
+
+        for feature_excl in copy_excluded:
+            if Prob.should_do(Prob.p_gga_mutate_feature):
+                self.excluded.remove(feature_excl)
+                index_group_new = np.random.randint(low=0, high=len(copy_included), size=1).item()
+                self.included[index_group_new][0].append(feature_excl)
+        
+        for i, group in enumerate(copy_included):
+            for feature_incl in group[0]:
+                if Prob.should_do(Prob.p_gga_mutate_feature):
+                    self.included[i][0].remove(feature_incl)
+                    index_group_new = np.random.randint(low=0, high=1 + len(copy_included), size=1).item()
+                    if index_group_new == 0:
+                        self.excluded.add(feature_incl)
+                    else:
+                        self.included[index_group_new - 1][0].append(feature_incl)
+        
+        for i, group in enumerate(copy_included):
+            if Prob.should_do(Prob.p_gga_mutate_monotonicity):
+                self.included[i][1] = np.random.randint(low=-1, high=2, size=1).item()
 
 
     @classmethod
     def gga_crossover(cls, parent_1, parent_2):
-        pass  # TODO: implement
+        return parent_1, parent_2  # TODO: implement
 
 
 class Prob:
+    p_ea_crossover_overall = 0.7
+    p_ea_crossover_param = 0.5
+    p_ea_mutate_overall = 0.3
+    p_ea_mutate_param = 0.2
+
+    p_gga_crossover = 0.7
+    p_gga_mutate_overall = 0.3
+    p_gga_mutate_feature = 0.2
+    p_gga_mutate_monotonicity = 0.2
+
+
     @staticmethod
     def r_trunc_geom(p: float, samples: int, val_min: int = 3, val_max: int = 10):
         a = val_min - 1
@@ -156,4 +189,5 @@ class Prob:
 
     @staticmethod
     def should_do(p: float):
+        return True  # TODO: remove line after implementing EA + GGA / offspring creation
         return np.random.uniform() <= p
