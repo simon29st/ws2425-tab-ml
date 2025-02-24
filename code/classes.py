@@ -84,36 +84,49 @@ class Dataset(torch.utils.data.Dataset):
         
         self.feature_groups = group_structure.get_included_groups_features()
 
+        # incorporate monotonicity for individual features (swap sign if -1)
+        for group in self.feature_groups:
+            for feature in group:
+                self.X[:, feature] *= group_structure.get_feature_signs()[feature]
+
 
     def __len__(self):
         return self.X.shape[0]
 
 
     def __getitem__(self, idx: int):
-        # TODO: incorporate monotonicity effect
         return tuple(self.X[idx, group] for group in self.feature_groups), self.y[idx]
 
 
 class GroupStructure:
-    def __init__(self, all_features: set, excluded: set, *included):
-        self.all_features = set()
+    def __init__(self, all_features: list, feature_signs: list, excluded: list, *included):
+        self.all_features = list()
 
         self.excluded = excluded
-        self.all_features.update(self.excluded)
 
-        # TODO: incorporate monotonicity effect
+        if len(all_features) != len(feature_signs):
+            raise Exception(f'all_features must be same length as feature_signs: {all_features} vs {feature_signs}')
+        elif any(feat_sign not in {-1, 1} for feat_sign in feature_signs):
+            raise Exception(f'feature monotonicity must be encoded in {-1, 1}: {feature_signs}')
+        self.all_features += self.excluded
+        self.feature_signs = feature_signs  # used for swapping feature sign in Dataset
+
         for g_k in included:
-            if isinstance(g_k, list) and len(g_k) == 2 and isinstance(g_k[0], list) and isinstance(g_k[1], int) and g_k[1] in {-1, 0, 1}:
+            if isinstance(g_k, list) and len(g_k) == 2 and isinstance(g_k[0], list) and isinstance(g_k[1], int) and g_k[1] in {0, 1}:
                 if any(feature in self.all_features for feature in g_k[0]):
                     raise Exception(f'a feature in group {g_k} has already been used in another group in this group structure')
+                elif any(not isinstance(feature, int) for feature in g_k[0]):
+                    raise Exception(f'features must be ints: {g_k[0]}')
                 else:
-                    self.all_features.update(g_k[0])
+                    self.all_features += g_k[0]
             else:
                 raise Exception('invalid group', g_k)
         self.included = list(included)
 
-        if all_features != self.all_features:
-            raise Exception('feature mismatch', all_features, 'vs', self.all_features)
+        if set(all_features) != set(self.all_features):
+            raise Exception(f'feature mismatch: {all_features} vs {self.all_features}')
+        elif len(all_features) != len(self.all_features):
+            raise Exception(f'some feature is missing / too much: {all_features} vs {excluded} + {included}')
         
 
     def __str__(self):
@@ -132,28 +145,32 @@ class GroupStructure:
         return self.included
     
 
-    def get_included_groups_features(self) -> list:  # only get feature sets of the groups
+    def get_included_groups_features(self) -> list:  # only get feature lists of all groups
         return [group[0] for group in self.included]
     
 
-    def get_included_features(self) -> set:
-        return set(feature for group in self.included for feature in group[0])
+    def get_included_features(self) -> list:
+        return list(feature for group in self.included for feature in group[0])
     
 
     def get_unconstrained_groups(self):  # groups without monotonicity constraint
         return [group for group in self.included if group[1] == 0]
     
 
-    def get_unconstrained_features(self):  # features of groups without monotonicity constraint
-        return set(feature for group in self.get_unconstrained_groups() for feature in group[0])
+    def get_unconstrained_features(self) -> list:  # features of groups without monotonicity constraint
+        return list(feature for group in self.get_unconstrained_groups() for feature in group[0])
     
 
-    def get_all_features(self) -> set:
+    def get_all_features(self) -> list:
         return self.all_features
+    
+    
+    def get_feature_signs(self) -> list:
+        return self.feature_signs
     
 
     @staticmethod
-    def detector_features(data, categorical_indicator) -> set:
+    def detector_features(data, categorical_indicator) -> list:
         p = data.shape[1] - 1  # not a probability, total # of features
         num_inclduded_features = Prob.r_trunc_geom(Prob.p_sample_features_selected, samples=1, val_min=1, val_max=p)
         info_gain = mutual_info_classif(
@@ -163,14 +180,19 @@ class GroupStructure:
         )
         p_info_gain = info_gain / np.sum(info_gain)
 
-        feats_selected = np.random.choice(
-            a = data.shape[1]-1,
-            size=num_inclduded_features,
-            replace=False,
-            p=p_info_gain
-        )
+        try:
+            feats_selected = np.random.choice(
+                a=data.shape[1]-1,
+                size=num_inclduded_features,
+                replace=False,
+                p=p_info_gain
+            )
+        except:
+            # sometimes num_inclduded_features (size) can be > # of non-zero values in p_info_gain (p)
+            # then simply return only the features with non-zero values in p_info_gain
+            feats_selected = np.nonzero(p_info_gain)[0]
 
-        return set(feats_selected.tolist())
+        return list(feats_selected.tolist())
 
 
     @staticmethod
@@ -255,56 +277,68 @@ class GroupStructure:
         
 
     @staticmethod
-    def detector_monotonicity(data, included_groups_without_monotonicity: list) -> list:
+    def detector_monotonicity(data, included_groups_without_monotonicity: list) -> tuple:
+        feature_scores = list()
+        feature_signs = list()
+        for feature in range(len(data.columns) - 1):  # only iterate over feature columns (data includes 'class' column)
+            rhos = list()
+            for _ in range(10):
+                data_train = resample(
+                    data.iloc[:, :],
+                    replace=True,
+                    n_samples=round(0.9 * len(data.index)),
+                    stratify=data.loc[:, 'class']
+                )
+                idx_data_train = data_train.index
+                data_test = data.loc[~data.index.isin(idx_data_train), :]
+
+                dec_tree = DecisionTreeClassifier(max_depth=30, min_samples_split=20)
+                dec_tree = dec_tree.fit(X=data_train.iloc[:, [feature]], y=data_train.loc[:, 'class'])  # expects DataFrame for X
+                y_pred = dec_tree.predict(X=data_test.iloc[:, [feature]])  # expects DataFrame for X
+
+                rhos.append(spearmanr(a=data_test.iloc[:, feature], b=y_pred).statistic)
+
+            rho_mean = np.mean(rhos)
+            rho_sign = round(np.sign(rho_mean).item())
+            if rho_sign == 0:
+                rho_sign = 1
+
+            score = (np.abs(rho_mean) - 0) / (1 - 0) * (0.8 - 0.2) + 0.2  # scale to [0.2, 0.8], cf. https://stats.stackexchange.com/a/281164
+
+            feature_scores.append(score)
+            feature_signs.append(rho_sign)
+        
         groups_included = list()
         for group in included_groups_without_monotonicity:
             group_scores = list()
-            group_signs = list()
 
             for feature in group:
-                rhos = list()
-                for _ in range(10):
-                    data_train = resample(
-                        data.iloc[:, :],
-                        replace=True,
-                        n_samples=round(0.9 * len(data.index)),
-                        stratify=data.loc[:, 'class']
-                    )
-                    idx_data_train = data_train.index
-                    data_test = data.loc[~data.index.isin(idx_data_train), :]
-
-                    dec_tree = DecisionTreeClassifier(max_depth=30, min_samples_split=20)
-                    dec_tree = dec_tree.fit(X=data_train.iloc[:, [feature]], y=data_train.loc[:, 'class'])  # expects DataFrame for X
-                    y_pred = dec_tree.predict(X=data_test.iloc[:, [feature]])  # expects DataFrame for X
-
-                    rhos.append(spearmanr(a=data_test.iloc[:, feature], b=y_pred).statistic)
-
-                rho_mean = np.mean(rhos)
-                rho_sign = np.sign(rho_mean)
-
-                score = (np.abs(rho_mean) - 0) / (1 - 0) * (0.8 - 0.2) + 0.2  # scale to [0.2, 0.8], cf. https://stats.stackexchange.com/a/281164
-
-                group_scores.append(score)
-                group_signs.append(rho_sign)
+                group_scores.append(feature_scores[feature])
             
             groups_included.append([
                 group,
                 round(np.random.binomial(n=1, p=np.mean(group_scores), size=1).item()),
-                group_signs
             ])
 
-        return groups_included
+        return groups_included, feature_signs
     
 
     def gga_mutate(self):
         copy_excluded = self.excluded.copy()
-        copy_included = self.included[:]
 
         for feature_excl in copy_excluded:
             if Prob.should_do(Prob.p_gga_mutate_feature):
                 self.excluded.remove(feature_excl)
-                index_group_new = np.random.randint(low=0, high=len(copy_included), size=1).item()
-                self.included[index_group_new][0].append(feature_excl)
+                if len(self.included) == 0:  # in case some previous mutation yielded a featureless learner (i.e. empty self.included) -> append new included group and add feature there
+                    self.included.append([
+                        [feature_excl],
+                        self.get_feature_signs()[feature_excl]
+                    ])
+                else:  # regular case, there is at least 1 included group, i.e. at least 1 feature used in the learner
+                    index_group_new = np.random.randint(low=0, high=len(self.included), size=1).item()
+                    self.included[index_group_new][0].append(feature_excl)
+                    
+        copy_included = deepcopy(self.included)
         
         for i, group in enumerate(copy_included):
             for feature_incl in group[0]:
@@ -312,39 +346,44 @@ class GroupStructure:
                     self.included[i][0].remove(feature_incl)
                     index_group_new = np.random.randint(low=0, high=1 + len(copy_included), size=1).item()
                     if index_group_new == 0:
-                        self.excluded.add(feature_incl)
+                        self.excluded.append(feature_incl)
                     else:
                         self.included[index_group_new - 1][0].append(feature_incl)
         
         for i, group in enumerate(copy_included):
             if Prob.should_do(Prob.p_gga_mutate_monotonicity):
                 self.included[i][1] = np.random.randint(low=-1, high=2, size=1).item()
-    
+
 
     def get_crossing_section(self, bounds: list) -> list:
         crossing_section = list()
+        with_exclusion_group = False
 
         lower, upper = bounds
         if lower == 0:
             crossing_section.append(self.excluded)
+            with_exclusion_group = True
             lower += 1
         
         crossing_section += self.included[lower-1:upper]
-        return crossing_section
+        return crossing_section, with_exclusion_group
     
 
-    def insert_crossing_section(self, crossing_section):
+    def insert_crossing_section(self, crossing_section, with_exclusion_group):
         features_to_insert = set()
-        for group in crossing_section:
-            if isinstance(group, set):  # exclusion group in crossing section
-                features_to_insert.update(group)
-            else:  # "regular" group
+        for i, group in enumerate(crossing_section):  
+            if i == 0 and with_exclusion_group:  # exclusion group in crossing section, first group in crossing section is then always the exclusion group
+                features_to_insert.update(set(group))
+            else:  # remainder are always groups of included features
                 for feature in group[0]:
                     features_to_insert.add(feature)
         
         # remove features to be inserted form current groups
         for feature in features_to_insert:
-            self.excluded.discard(feature)
+            try:
+                self.excluded.remove(feature)
+            except:
+                pass  # expected behaviour, feature to be inserted was not in self.excluded, then it must be in self.included
         for group in self.included:
             group[0] = [feature for feature in group[0] if feature not in features_to_insert]
         
@@ -356,10 +395,10 @@ class GroupStructure:
         self.included = included
         
         # insert crossing section
-        for group in crossing_section:
-            if isinstance(group, set):  # exclusion group in crossing section
-                self.excluded.update(group)
-            else:  # "regular" group
+        for i, group in enumerate(crossing_section):  
+            if i == 0 and with_exclusion_group:  # exclusion group in crossing section
+                self.excluded += group  # no need to check for duplicates, as those have already been removed above
+            else:
                 self.included.append(group)
 
 
@@ -368,14 +407,14 @@ class GroupStructure:
         bounds_1 = sorted(np.random.randint(low=0, high=len(parent_1), size=2))
         bounds_2 = sorted(np.random.randint(low=0, high=len(parent_2), size=2))
 
-        crossing_section_1 = parent_1.get_crossing_section(bounds_1)
-        crossing_section_2 = parent_2.get_crossing_section(bounds_2)
+        crossing_section_1, cs_1_with_exclusion_group = parent_1.get_crossing_section(bounds_1)
+        crossing_section_2, cs_2_with_exclusion_group = parent_2.get_crossing_section(bounds_2)
 
         child_1 = deepcopy(parent_1)
         child_2 = deepcopy(parent_2)
 
-        child_1.insert_crossing_section(crossing_section_2)
-        child_2.insert_crossing_section(crossing_section_1)
+        child_1.insert_crossing_section(crossing_section_2, cs_2_with_exclusion_group)
+        child_2.insert_crossing_section(crossing_section_1, cs_1_with_exclusion_group)
 
         return child_1, child_2
 

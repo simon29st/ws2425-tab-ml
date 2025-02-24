@@ -20,28 +20,28 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
     population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
     population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
 
-    all_features = set(i for i in range(len(data_train_test.columns) - 1))
+    all_features = list(i for i in range(len(data_train_test.columns) - 1))
     population_features_included = [GroupStructure.detector_features(data_train_test, categorical_indicator) for _ in range(mu)]
-    population_features_excluded = [set(all_features - features_included) for features_included in population_features_included]
+    population_features_excluded = [list(set(all_features) - set(features_included)) for features_included in population_features_included]
     population_interactions = [GroupStructure.detector_interactions(data_train_test, features_included) for features_included in population_features_included]
     population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_test, groups_without_monotonicity) for groups_without_monotonicity in population_interactions]
 
-    print(f'features exlcuded: {population_features_excluded}')
-
     population = list()
 
-    # call initial population offspring, makes looping easier in subsequent iterations (as we only evaluate offspring in each round and usually mu != lambda)
+    # set offspring = initial population, makes looping easier in subsequent iterations, this way we can use a single for loop for both initial population + subsequent offspring (as we only evaluate offspring in each round)
     offspring = [{
         'total_layers': population_layers[i].item(),
         'nodes_per_hidden_layer': population_nodes[i].item(),
-        'group_structure': GroupStructure(  # TODO: init group structure with detectors
+        'group_structure': GroupStructure(
             all_features,
-            {0, 1},  # population_features_excluded[i]
-            [[2, 5], 1],  # *population_monotonicity_constraints[i]
-            [[4], 0],
-            [[7, 3, 6], 1]
+            population_monotonicity_constraints[i][1],
+            population_features_excluded[i],
+            *population_monotonicity_constraints[i][0]
         )
     } for i in range(mu)]
+
+    print('initial population')
+    [print(f'total layers {individual['total_layers']}, nodes_per_hidden_layer {individual['nodes_per_hidden_layer']}, gs: {individual['group_structure']}') for individual in offspring]
 
     # evolutionary algorithm
     i_evolution = 0  # TODO: remove, used to stop after 3 evolutions
@@ -81,8 +81,8 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
 def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, weight_clipper=None):
     metrics = list()
 
-    for i, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
-        print(f'fold {i + 1}/{cv.get_n_splits()}')
+    for fold, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
+        print(f'fold {fold + 1}/{cv.get_n_splits()}', end=' | ')  # TODO: remove
 
         data_train = data_train_test.loc[indices_train, :]
         dataset_train = Dataset(
@@ -113,9 +113,7 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
         train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper)#, verbose=True)
 
         metrics.append(eval(model, dataset_test, batch_size))
-
-        # TODO: remove debug metrics output
-        print(metrics[-1])
+        print(metrics[-1])  # TODO: remove debug metrics output
 
     # TODO: no need to record NF, NI, NNM over folds and compute mean + var for them, as they stay the same in each fold
     return {
@@ -207,8 +205,8 @@ def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
 
     nf = num_features_included / num_features_all  # via gs: relative # of included features
     ni = 0  # via gs:
-    # for each group with > 1 features: sum over range from 1 to (# of features in group - 1) -> # handshakes in party -> n choose 2
-    # then divide by # of all possible interactions (all_features choose 2)
+    #   for each group with > 1 features: sum over range from 1 to (# of features in group - 1) -> # handshakes in party -> n choose 2
+    #   then divide by # of all possible interactions (all_features choose 2)
     for (features, _) in gs.get_included_groups():
         num_features_in_group = len(features)
         if num_features_in_group > 1:
