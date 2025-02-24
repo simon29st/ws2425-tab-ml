@@ -19,7 +19,10 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int
 
     population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
     population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
-    population = [{
+    population = list()
+
+    # call initial population offspring, makes looping easier in subsequent iterations (as we only evaluate offspring in each round and usually mu != lambda)
+    offspring = [{
         'total_layers': population_layers[i].item(),
         'nodes_per_hidden_layer': population_nodes[i].item(),
         'group_structure': GroupStructure(  # TODO: init group structure with detectors
@@ -31,24 +34,39 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int
         )
     } for i in range(mu)]
 
+    # evolutionary algorithm
+    i_evolution = 0  # TODO: remove, used to stop after 3 evolutions
     while(True):  # TODO: define stopping criterion + remove break from end of loop
-        for i, individual in enumerate(population):
+        print(f'Evolution {i_evolution+1}, evaluate {len(offspring)} individuals')
+        for i, individual in enumerate(offspring):
             total_layers = individual['total_layers']
             nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
             gs = individual['group_structure']
 
-            print(f'running HPO for individual {i+1}/{mu}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
+            print(f'running HPO for individual {i+1}/{len(offspring)}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
             metrics = run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
 
-            population[i]['metrics'] = metrics
+            offspring[i]['metrics'] = metrics
         
-        offspring = generate_offspring(la, population, hp_bounds)
+        population += offspring
+        ranks_nds = ndomsort.non_domin_sort(
+            [individual['metrics']['mean'] for individual in population],
+            get_objectives=lambda elem: (1 - elem[0], *[elem[i] for i in range(1, len(elem))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
+            only_front_indices=True
+        )
+        for i in range(len(population)):
+            population[i]['rank_nds'] = ranks_nds[i]
+        population = sorted(population, key=lambda individual: individual['rank_nds'])[:mu]  # ascending order, lower ranks are better, then choose best mu individuals
+        print(f'population: {population}')
+        
+        offspring = generate_offspring(la, population, ranks_nds, hp_bounds)
         for ind in offspring:
             print(ind, ind['group_structure'])
-        # TODO: only evaluate offspring in next iteration and discard worst >lambda< (la) from union(population, offspring)
 
-        # EAGGA until stopping criterion is met
-        break
+        # TODO: remove, used to stop after 3 evolutions
+        if i_evolution > 1:
+            break
+        i_evolution += 1
 
 
 def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, weight_clipper=None):
@@ -90,6 +108,7 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
         # TODO: remove debug metrics output
         print(metrics[-1])
 
+    # TODO: no need to record NF, NI, NNM over folds and compute mean + var for them, as they stay the same in each fold
     return {
         'mean': np.mean(metrics, axis=0),
         'var': np.var(metrics, axis=0),
@@ -192,7 +211,7 @@ def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
     return auc.item(), nf, ni, nnm
 
 
-def binary_tournament(population):
+def binary_tournament(population, ranks_nds):
     '''
     steps
     (1) sample (without replacement) two random ids from population
@@ -205,22 +224,21 @@ def binary_tournament(population):
     '''
     # (1)
     ids = np.random.choice(a=len(population), size=2, replace=False)#.tolist()
-    # (2)
-    ranks_nds = ndomsort.non_domin_sort([individual['metrics']['mean'] for individual in population], only_front_indices=True)
+    # (2) ranks_nds taken from EA loop
     # (3)
     if ranks_nds[ids[0]] != ranks_nds[ids[1]]:  # (a)
-        return sorted(ids, key=lambda id: ranks_nds[id], reverse=True)[0]  # descending order
+        return sorted(ids, key=lambda id: ranks_nds[id])[0]  # ascending order, lower ranks are better
     else:  # (b)
         # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance, computation cf. https://de.mathworks.com/matlabcentral/fileexchange/65809-on-the-calculation-of-crowding-distance
         return ids[0]
 
 
-def generate_offspring(la, population, hp_bounds):
+def generate_offspring(la, population, ranks_nds, hp_bounds):
     offspring = list()
 
     while len(offspring) <= la:
-        id_parent_1 = binary_tournament(population)
-        id_parent_2 = binary_tournament(population)
+        id_parent_1 = binary_tournament(population, ranks_nds)
+        id_parent_2 = binary_tournament(population, ranks_nds)
         parent_1 = population[id_parent_1]
         parent_2 = population[id_parent_2]
 
