@@ -1,17 +1,21 @@
 import numpy as np
 
 import torch
+from torch import nn
+
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
 
 from classes import NeuralNetwork, Dataset, GroupStructure, Prob
 
 from math import comb
 from copy import deepcopy
+from datetime import datetime, timedelta
 
 from nds import ndomsort
 
 
-def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epochs: int, batch_size: int, weight_clipper=None):
+def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
     hp_bounds = {
         'total_layers': (3, 10),
         'nodes_per_hidden_layer': (3, 20)
@@ -43,9 +47,13 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
     print('initial population')
     [print(f'total layers {individual['total_layers']}, nodes_per_hidden_layer {individual['nodes_per_hidden_layer']}, gs: {individual['group_structure']}') for individual in offspring]
 
+    
+    time_start = datetime.now()
+    print(f'start EA at {time_start.isoformat()}')
+
     # evolutionary algorithm
-    i_evolution = 0  # TODO: remove, used to stop after 3 evolutions
-    while(True):  # TODO: define stopping criterion + remove break from end of loop
+    i_evolution = 0
+    while(datetime.now() < time_start + timedelta(seconds=secs)):
         print(f'Evolution {i_evolution+1}, evaluate {len(offspring)} individuals')
         for i, individual in enumerate(offspring):
             total_layers = individual['total_layers']
@@ -53,13 +61,13 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
             gs = individual['group_structure']
 
             print(f'running HPO for individual {i+1}/{len(offspring)}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
-            metrics = run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, weight_clipper)
+            metrics = run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, patience, weight_clipper, secs)
 
             offspring[i]['metrics'] = metrics
         
         population += offspring
         ranks_nds = ndomsort.non_domin_sort(
-            [individual['metrics']['mean'] for individual in population],
+            [individual['metrics']['performance']['mean'] for individual in population],
             get_objectives=lambda elem: (1 - elem[0], *[elem[i] for i in range(1, len(elem))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
             only_front_indices=True
         )
@@ -72,22 +80,36 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
         for ind in offspring:
             print(ind, ind['group_structure'])
 
-        # TODO: remove, used to stop after 3 evolutions
-        if i_evolution > 1:
-            break
         i_evolution += 1
+    
+    print(f'finished EA at {datetime.now().isoformat()}')
 
 
-def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, weight_clipper=None):
-    metrics = list()
+def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
+    metrics = {
+        'performance': list(),
+        'epochs': list()
+    }
 
     for fold, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
         print(f'fold {fold + 1}/{cv.get_n_splits()}', end=' | ')  # TODO: remove
 
-        data_train = data_train_test.loc[indices_train, :]
+        data_train_stop_early = data_train_test.loc[indices_train, :]
+        data_train, data_stop_early = train_test_split(
+            data_train_stop_early,
+            train_size=0.8,
+            shuffle=True,
+            stratify=data_train_stop_early.loc[:, 'class']
+        )
         dataset_train = Dataset(
             X=data_train.loc[:, data_train.columns != 'class'],
             y=data_train.loc[:, 'class'],
+            class_pos='tested_positive',
+            group_structure=group_structure
+        )
+        dataset_stop_early = Dataset(
+            X=data_stop_early.loc[:, data_stop_early.columns != 'class'],
+            y=data_stop_early.loc[:, 'class'],
             class_pos='tested_positive',
             group_structure=group_structure
         )
@@ -108,31 +130,37 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
         )
 
         optimizer = torch.optim.AdamW(model.parameters())
-        loss_fn = torch.nn.BCEWithLogitsLoss()
+        loss_fn = nn.BCEWithLogitsLoss()
 
-        train(optimizer, loss_fn, model, epochs, dataset_train, dataset_test, batch_size, weight_clipper)#, verbose=True)
+        model, optimal_epoch = train(optimizer, loss_fn, model, epochs, dataset_train, dataset_stop_early, batch_size, patience, weight_clipper, secs)
 
-        metrics.append(eval(model, dataset_test, batch_size))
-        print(metrics[-1])  # TODO: remove debug metrics output
+        metrics['performance'].append(eval(model, dataset_test, batch_size))
+        metrics['epochs'].append(optimal_epoch)
+        print(metrics['performance'][-1], metrics['epochs'][-1])  # TODO: remove debug metrics output
 
     # TODO: no need to record NF, NI, NNM over folds and compute mean + var for them, as they stay the same in each fold
     return {
-        'mean': np.mean(metrics, axis=0),
-        'var': np.var(metrics, axis=0),
-        'folds': metrics
+        'performance': {
+            'mean': np.mean(metrics['performance'], axis=0),
+            'var': np.var(metrics['performance'], axis=0),
+            'folds': metrics['performance']
+        },
+        'epochs': {
+            'mean': np.mean(metrics['epochs'], axis=0),
+            'folds': metrics['epochs']
+        }
     }
 
 
 # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-def train(optimizer, loss_fn, model: NeuralNetwork, epochs: int, dataset_train: Dataset, dataset_test: Dataset, batch_size: int, weight_clipper=None, verbose=False):
-    if verbose:
-        eval_loss = train_eval(loss_fn, model, dataset_test, batch_size)
-        print(f'epoch 0/{epochs}, eval loss {eval_loss}')
-
+def train(optimizer, loss_fn, model: NeuralNetwork, epochs: int, dataset_train: Dataset, dataset_stop_early: Dataset, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60) -> tuple:
     loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=False)  # TODO: set shuffle to True
 
-    for epoch in range(epochs):
-        model.train()  # training mode, put here as we eval at the end of each epoch
+    epoch = 0
+    early_stop_loss_history = list()
+    time_start = datetime.now()
+    while(datetime.now() < time_start + timedelta(seconds=secs)):
+        model.train()  # training mode, put here as we switch to eval mode at the end of each epoch in def stop_early
         running_epoch_loss = 0
 
         for batch_input, batch_target in loader_train:  # divide data in mini batches
@@ -151,38 +179,55 @@ def train(optimizer, loss_fn, model: NeuralNetwork, epochs: int, dataset_train: 
             for i, (_, monotonicity_constraint) in enumerate(model.get_group_structure().get_included_groups()):
                 if monotonicity_constraint == 1:
                     model.networks[i].apply(weight_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
+        
+        should_stop_early, optimal_epoch = stop_early(early_stop_loss_history, model, loss_fn, dataset_stop_early, batch_size, patience)
+        if should_stop_early:
+            return model, optimal_epoch
+        epoch += 1
+    
+    return model, epoch
 
-        if verbose:
-            print(f'epoch {epoch + 1}/{epochs}, train loss {running_epoch_loss}')
-            eval_loss = train_eval(loss_fn, model, dataset_test, batch_size)
-            print(f'epoch {epoch + 1}/{epochs}, eval loss {eval_loss}')
 
-
-# evaluate for training, i.e. compute loss on test set, actual evaluation (AUC, NF, NI, NNM) will be done in separate function 'eval'
-# cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-def train_eval(loss_fn, model: NeuralNetwork, dataset_test: Dataset, batch_size: int, verbose=False) -> float:
-    loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)  # no need to shuffle in test
+def stop_early(loss_history: list, model: NeuralNetwork, loss_fn, dataset_stop_early: Dataset, batch_size: int, patience: int = 10) -> tuple:
+    # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
+    loader_stop_early = torch.utils.data.DataLoader(dataset_stop_early, batch_size=batch_size)  # no need to shuffle in test
     
     model.eval()  # eval mode
     running_loss = 0
 
-    for batch_input, batch_target in loader_test:
+    for batch_input, batch_target in loader_stop_early:
         with torch.no_grad():
             batch_output = model(*batch_input).flatten()
             
         batch_loss = loss_fn(batch_output, batch_target)
         running_loss += batch_loss.detach().item()
-    running_loss /= len(loader_test)
+    running_loss /= len(loader_stop_early)
 
-    if verbose:
-        print(f'eval loss {running_loss}')
-    return running_loss
+    # stopping criterion: mean of >patience< previous losses < current loss
+    # if True -> go back to min loss within [t-patience, t]
+
+    loss_history.append(running_loss)
+    #print(f'stop_early loss_history: {loss_history}')
+
+    if len(loss_history) <= patience:
+        #print('stop_early len(loss_history) <= patience')
+        return False, -1
+    elif np.mean(loss_history[-patience-1:-1]) < running_loss:
+        #print(f'stop_early loss_history[-patience-1:-1]: {loss_history[-patience-1:-1]}')
+        mask = np.ones_like(loss_history)
+        mask[:-patience-1] = np.inf
+        optimal_epoch = np.argmin(mask * loss_history) + 1  # +1 to make it 1-based (as opposed to 0-based from np.argmin indexing)
+        print(f'stop early: {np.mean(loss_history[-patience-1:-1])} < {running_loss}, optimal epoch {optimal_epoch}', end=' | ')
+        return True, optimal_epoch
+    
+    #print(f'stop_early loss_history[-patience-1:-1]: {loss_history[-patience-1:-1]}')
+    return False, -1
 
 
 def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
     loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)
     
-    model.eval()
+    model.eval()  # eval mode
 
     batch_predictions = list()
     batch_targets = list()
