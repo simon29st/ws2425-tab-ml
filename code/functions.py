@@ -11,7 +11,7 @@ from copy import deepcopy
 from nds import ndomsort
 
 
-def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int, weight_clipper=None):
+def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epochs: int, batch_size: int, weight_clipper=None):
     hp_bounds = {
         'total_layers': (3, 10),
         'nodes_per_hidden_layer': (3, 20)
@@ -19,6 +19,15 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int
 
     population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
     population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
+
+    all_features = set(i for i in range(len(data_train_test.columns) - 1))
+    population_features_included = [GroupStructure.detector_features(data_train_test, categorical_indicator) for _ in range(mu)]
+    population_features_excluded = [set(all_features - features_included) for features_included in population_features_included]
+    population_interactions = [GroupStructure.detector_interactions(data_train_test, features_included) for features_included in population_features_included]
+    population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_test, groups_without_monotonicity) for groups_without_monotonicity in population_interactions]
+
+    print(f'features exlcuded: {population_features_excluded}')
+
     population = list()
 
     # call initial population offspring, makes looping easier in subsequent iterations (as we only evaluate offspring in each round and usually mu != lambda)
@@ -26,7 +35,7 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, epochs: int, batch_size: int
         'total_layers': population_layers[i].item(),
         'nodes_per_hidden_layer': population_nodes[i].item(),
         'group_structure': GroupStructure(  # TODO: init group structure with detectors
-            {0, 1, 2, 3, 4, 5, 6, 7},
+            all_features,
             {0, 1},
             [[2, 5], 1],
             [[4], 0],

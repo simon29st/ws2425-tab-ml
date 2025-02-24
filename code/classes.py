@@ -1,10 +1,16 @@
 import torch
 from torch import nn
 
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.feature_selection import mutual_info_classif
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
 import numpy as np
 import pandas as pd
 
 from copy import deepcopy
+from collections import defaultdict
 
 
 class NeuralNetwork(nn.Module):
@@ -141,6 +147,113 @@ class GroupStructure:
         return self.all_features
     
 
+    @staticmethod
+    def detector_features(data, categorical_indicator) -> set:
+        p = data.shape[1] - 1  # not a probability, total # of features
+        num_inclduded_features = Prob.r_trunc_geom(Prob.p_sample_features_selected, samples=1, val_min=1, val_max=p)
+        info_gain = mutual_info_classif(
+            X=data.loc[:, data.columns != 'class'],
+            y=data.loc[:, 'class'],
+            discrete_features=categorical_indicator[:-1]  # TODO: check if a Dataset can be passed (instead of the pandas dataframe) + if so save categorical_indicator in the dataset
+        )
+        p_info_gain = info_gain / np.sum(info_gain)
+
+        feats_selected = np.random.choice(
+            a = data.shape[1]-1,
+            size=num_inclduded_features,
+            replace=False,
+            p=p_info_gain
+        )
+
+        return set(feats_selected.tolist())
+
+
+    @staticmethod
+    def detector_interactions(data, features_included: set) -> list:  # returns groups of included features without monotonicity attribute
+        p = len(features_included)  # not a probability, # of features included
+        num_interactions = Prob.r_trunc_geom(Prob.p_sample_interactions, samples=1, val_min=1, val_max=p * (p - 1) / 2).item()
+        
+        poly = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+        feature_names = data.loc[:, data.columns != 'class'].columns
+        poly.feature_names_in_ = feature_names
+
+        X_interaction_terms = poly.fit_transform(  # X_interaction_terms doesn't include 'class', hence don't name 'data_*' but 'X_*'
+            X=data.iloc[:, data.columns != 'class'],
+            y=data.loc[:, 'class']
+        )
+        X_interaction_terms_columns = poly.get_feature_names_out().tolist()
+
+        data_interaction_terms_train, data_interaction_terms_test = train_test_split(  # as pandas data frame to preserve original indices (numpy ndarray discards them)
+            data,
+            train_size=0.8,
+            shuffle=True,
+            stratify=data.loc[:, 'class']
+        )
+        idx_interaction_terms_train = data_interaction_terms_train.index
+        idx_interaction_terms_test = data_interaction_terms_test.index
+        # data as numpy
+        X_interaction_terms_train = X_interaction_terms[idx_interaction_terms_train]
+        X_interaction_terms_test = X_interaction_terms[idx_interaction_terms_test]
+
+        features_included_list = list(features_included)
+        score_interaction = dict()
+        # iterate over feature combinations
+        # interaction_terms + feature_names include ALL features + interaction effects, i.e. also those that are excluded
+        for i in features_included:
+            for j in features_included:
+                feature_name_i = feature_names[i]
+                feature_name_j = feature_names[j]
+
+                try:
+                    idx_interaction = X_interaction_terms_columns.index(f'{feature_name_i} {feature_name_j}')
+                except:
+                    # combination (i, j) not in interactions
+                    # either (j, i) will be in interactions (if i, j are in features_included)
+                    # or neither (i, j) nor (j, i) will be in interactions (if any of them are not in features_included)
+                    # in any case, continue with next iteration
+                    continue
+                
+                log_mod = LogisticRegression(penalty=None)
+                log_mod = log_mod.fit(X=X_interaction_terms_train[:, features_included_list + [idx_interaction]], y=data.loc[idx_interaction_terms_train, 'class'])
+                score_interaction[(i, j)] = log_mod.score(X=X_interaction_terms_test[:, features_included_list + [idx_interaction]], y=data.loc[idx_interaction_terms_test, 'class'])
+
+        score_interactions_sorted = sorted(score_interaction.items(), key=lambda elem: elem[1], reverse=True)[:num_interactions]  # descending
+        included_interactions = [elem[0] for elem in score_interactions_sorted]
+
+        groups_included = [set(interaction) for interaction in included_interactions]
+        len_last_groups_included = -1
+        while len_last_groups_included != len(groups_included):
+            len_last_groups_included = len(groups_included)
+            i = 0
+            while i < len(groups_included):
+                j = i + 1
+                while j < len(groups_included):
+                    if groups_included[i].isdisjoint(groups_included[j]):
+                        j += 1
+                        continue
+                    else:
+                        groups_included[i].update(groups_included[j])
+                        del groups_included[j]
+                i += 1
+        
+        # in case some included features are not yet in the interaction groups, add them to individual groups
+        for feature in features_included:
+            feature_placed = False
+            for group in groups_included:
+                if feature in group:
+                    feature_placed = True
+                    break
+            if not feature_placed:
+                groups_included.append([feature])
+
+        return [list(group) for group in groups_included]
+        
+
+    @staticmethod
+    def detector_monotonicity(data, included_groups_without_monotonicity: list) -> list:
+        return list()
+    
+
     def gga_mutate(self):
         copy_excluded = self.excluded.copy()
         copy_included = self.included[:]
@@ -228,6 +341,8 @@ class GroupStructure:
 
 class Prob:
     p_sample_hps = 0.5
+    p_sample_features_selected = 0.5  # original paper uses relative # of features used across 10 decision trees, for our NN implementation just use 0.5
+    p_sample_interactions = 0.5  # original paper uses relative # of pairwise interactions used across 10 decision trees, for our NN implementation just use 0.5
 
     p_ea_crossover_overall = 0.7
     p_ea_crossover_param = 0.5
@@ -246,7 +361,7 @@ class Prob:
         b = val_max
 
         draws_unif = np.random.uniform(low=0, high=1, size=samples)
-        draws_trunc_geom = np.ceil(  # np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
+        draws_trunc_geom = np.ceil(  # round with np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
             np.log(np.pow(1 - p, a) - draws_unif * (np.pow(1 - p, a) - np.pow(1 - p, b))) / np.log(1 - p),
         ).astype(int)
         
@@ -257,3 +372,11 @@ class Prob:
     def should_do(p: float):
         return 1  # TODO: remove
         return np.random.uniform() <= p
+    
+
+    @staticmethod
+    def merge_list_of_sets(l):
+        # map feature to group index
+        map_dict = defaultdict(int)
+        for group in l:
+            pass
