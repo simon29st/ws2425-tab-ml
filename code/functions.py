@@ -36,8 +36,8 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
         'nodes_per_hidden_layer': population_nodes[i].item(),
         'group_structure': GroupStructure(  # TODO: init group structure with detectors
             all_features,
-            {0, 1},
-            [[2, 5], 1],
+            {0, 1},  # population_features_excluded[i]
+            [[2, 5], 1],  # *population_monotonicity_constraints[i]
             [[4], 0],
             [[7, 3, 6], 1]
         )

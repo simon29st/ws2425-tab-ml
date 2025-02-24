@@ -1,13 +1,17 @@
+import numpy as np
+import pandas as pd
+
 import torch
 from torch import nn
 
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.utils import resample
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 
-import numpy as np
-import pandas as pd
+from scipy.stats import spearmanr
 
 from copy import deepcopy
 from collections import defaultdict
@@ -97,6 +101,7 @@ class GroupStructure:
         self.excluded = excluded
         self.all_features.update(self.excluded)
 
+        # TODO: incorporate monotonicity effect
         for g_k in included:
             if isinstance(g_k, list) and len(g_k) == 2 and isinstance(g_k[0], list) and isinstance(g_k[1], int) and g_k[1] in {-1, 0, 1}:
                 if any(feature in self.all_features for feature in g_k[0]):
@@ -183,17 +188,17 @@ class GroupStructure:
         )
         X_interaction_terms_columns = poly.get_feature_names_out().tolist()
 
-        data_interaction_terms_train, data_interaction_terms_test = train_test_split(  # as pandas data frame to preserve original indices (numpy ndarray discards them)
+        data_train, data_test = train_test_split(  # as pandas data frame to preserve original indices (numpy ndarray discards them)
             data,
             train_size=0.8,
             shuffle=True,
             stratify=data.loc[:, 'class']
         )
-        idx_interaction_terms_train = data_interaction_terms_train.index
-        idx_interaction_terms_test = data_interaction_terms_test.index
+        idx_train = data_train.index
+        idx_test = data_test.index
         # data as numpy
-        X_interaction_terms_train = X_interaction_terms[idx_interaction_terms_train]
-        X_interaction_terms_test = X_interaction_terms[idx_interaction_terms_test]
+        X_interaction_terms_train = X_interaction_terms[idx_train]
+        X_interaction_terms_test = X_interaction_terms[idx_test]
 
         features_included_list = list(features_included)
         score_interaction = dict()
@@ -214,8 +219,8 @@ class GroupStructure:
                     continue
                 
                 log_mod = LogisticRegression(penalty=None)
-                log_mod = log_mod.fit(X=X_interaction_terms_train[:, features_included_list + [idx_interaction]], y=data.loc[idx_interaction_terms_train, 'class'])
-                score_interaction[(i, j)] = log_mod.score(X=X_interaction_terms_test[:, features_included_list + [idx_interaction]], y=data.loc[idx_interaction_terms_test, 'class'])
+                log_mod = log_mod.fit(X=X_interaction_terms_train[:, features_included_list + [idx_interaction]], y=data.loc[idx_train, 'class'])
+                score_interaction[(i, j)] = log_mod.score(X=X_interaction_terms_test[:, features_included_list + [idx_interaction]], y=data.loc[idx_test, 'class'])
 
         score_interactions_sorted = sorted(score_interaction.items(), key=lambda elem: elem[1], reverse=True)[:num_interactions]  # descending
         included_interactions = [elem[0] for elem in score_interactions_sorted]
@@ -251,7 +256,44 @@ class GroupStructure:
 
     @staticmethod
     def detector_monotonicity(data, included_groups_without_monotonicity: list) -> list:
-        return list()
+        groups_included = list()
+        for group in included_groups_without_monotonicity:
+            group_scores = list()
+            group_signs = list()
+
+            for feature in group:
+                rhos = list()
+                for _ in range(10):
+                    data_train = resample(
+                        data.iloc[:, :],
+                        replace=True,
+                        n_samples=round(0.9 * len(data.index)),
+                        stratify=data.loc[:, 'class']
+                    )
+                    idx_data_train = data_train.index
+                    data_test = data.loc[~data.index.isin(idx_data_train), :]
+
+                    dec_tree = DecisionTreeClassifier(max_depth=30, min_samples_split=20)
+                    dec_tree = dec_tree.fit(X=data_train.iloc[:, [feature]], y=data_train.loc[:, 'class'])  # expects DataFrame for X
+                    y_pred = dec_tree.predict(X=data_test.iloc[:, [feature]])  # expects DataFrame for X
+
+                    rhos.append(spearmanr(a=data_test.iloc[:, feature], b=y_pred).statistic)
+
+                rho_mean = np.mean(rhos)
+                rho_sign = np.sign(rho_mean)
+
+                score = (np.abs(rho_mean) - 0) / (1 - 0) * (0.8 - 0.2) + 0.2  # scale to [0.2, 0.8], cf. https://stats.stackexchange.com/a/281164
+
+                group_scores.append(score)
+                group_signs.append(rho_sign)
+            
+            groups_included.append([
+                group,
+                round(np.random.binomial(n=1, p=np.mean(group_scores), size=1).item()),
+                group_signs
+            ])
+
+        return groups_included
     
 
     def gga_mutate(self):
@@ -335,7 +377,6 @@ class GroupStructure:
         child_1.insert_crossing_section(crossing_section_2)
         child_2.insert_crossing_section(crossing_section_1)
 
-
         return child_1, child_2
 
 
@@ -375,8 +416,5 @@ class Prob:
     
 
     @staticmethod
-    def merge_list_of_sets(l):
-        # map feature to group index
-        map_dict = defaultdict(int)
-        for group in l:
-            pass
+    def fit_decision_tree(data):
+        pass
