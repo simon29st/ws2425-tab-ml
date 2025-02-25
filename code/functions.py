@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from classes import NeuralNetwork, Dataset, GroupStructure, Prob
 
@@ -15,7 +15,13 @@ from datetime import datetime, timedelta
 from nds import ndomsort
 
 
-def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
+def run_eagga_cv(mu, lambd, cv_k, data_train_val, categorical_indicator, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs_per_fold: int = 5 * 60 * 60, secs_total: int = 30 * 60 * 60):
+    # inner split
+    cv_inner = StratifiedKFold(
+        n_splits=cv_k,
+        shuffle=False  # TODO: set to True
+    )
+
     hp_bounds = {
         'total_layers': (3, 10),
         'nodes_per_hidden_layer': (3, 20)
@@ -24,11 +30,11 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
     population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['total_layers'][0], hp_bounds['total_layers'][1])
     population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
 
-    all_features = list(i for i in range(len(data_train_test.columns) - 1))
-    population_features_included = [GroupStructure.detector_features(data_train_test, categorical_indicator) for _ in range(mu)]
+    all_features = list(i for i in range(len(data_train_val.columns) - 1))
+    population_features_included = [GroupStructure.detector_features(data_train_val, categorical_indicator) for _ in range(mu)]
     population_features_excluded = [list(set(all_features) - set(features_included)) for features_included in population_features_included]
-    population_interactions = [GroupStructure.detector_interactions(data_train_test, features_included) for features_included in population_features_included]
-    population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_test, groups_without_monotonicity) for groups_without_monotonicity in population_interactions]
+    population_interactions = [GroupStructure.detector_interactions(data_train_val, features_included) for features_included in population_features_included]
+    population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_val, groups_without_monotonicity) for groups_without_monotonicity in population_interactions]
 
     population = list()
 
@@ -53,7 +59,7 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
 
     # evolutionary algorithm
     i_evolution = 0
-    while(datetime.now() < time_start + timedelta(seconds=secs)):
+    while(datetime.now() < time_start + timedelta(seconds=secs_total)):
         print(f'Evolution {i_evolution+1}, evaluate {len(offspring)} individuals')
         for i, individual in enumerate(offspring):
             total_layers = individual['total_layers']
@@ -61,9 +67,12 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
             gs = individual['group_structure']
 
             print(f'running HPO for individual {i+1}/{len(offspring)}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
-            metrics = run_cv(cv_inner, data_train_test, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, patience, weight_clipper, secs)
+            metrics = run_cv(cv_inner, data_train_val, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, patience, weight_clipper, secs_per_fold)
 
             offspring[i]['metrics'] = metrics
+
+            if datetime.now() >= time_start + timedelta(seconds=secs_total):
+                break
         
         population += offspring
         ranks_nds = ndomsort.non_domin_sort(
@@ -76,7 +85,7 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
         population = sorted(population, key=lambda individual: individual['rank_nds'])[:mu]  # ascending order, lower ranks are better, then choose best mu individuals
         print(f'population: {population}')
         
-        offspring = generate_offspring(la, population, ranks_nds, hp_bounds)
+        offspring = generate_offspring(lambd, population, ranks_nds, hp_bounds)
         for ind in offspring:
             print(ind, ind['group_structure'])
 
@@ -85,16 +94,16 @@ def run_eagga_cv(mu, la, cv_inner, data_train_test, categorical_indicator, epoch
     print(f'finished EA at {datetime.now().isoformat()}')
 
 
-def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
+def run_cv(cv, data_train_val, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
     metrics = {
         'performance': list(),
         'epochs': list()
     }
 
-    for fold, (indices_train, indices_test) in enumerate(cv.split(X=data_train_test, y=data_train_test.loc[:, 'class'])):
+    for fold, (indices_train, indices_val) in enumerate(cv.split(X=data_train_val, y=data_train_val.loc[:, 'class'])):
         print(f'fold {fold + 1}/{cv.get_n_splits()}', end=' | ')  # TODO: remove
 
-        data_train_stop_early = data_train_test.loc[indices_train, :]
+        data_train_stop_early = data_train_val.loc[indices_train, :]
         data_train, data_stop_early = train_test_split(
             data_train_stop_early,
             train_size=0.8,
@@ -114,10 +123,10 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
             group_structure=group_structure
         )
 
-        data_test = data_train_test.loc[indices_test, :]
-        dataset_test = Dataset(
-            X=data_test.loc[:, data_test.columns != 'class'],
-            y=data_test.loc[:, 'class'],
+        data_val = data_train_val.loc[indices_val, :]
+        dataset_val = Dataset(
+            X=data_val.loc[:, data_val.columns != 'class'],
+            y=data_val.loc[:, 'class'],
             class_pos='tested_positive',
             group_structure=group_structure
         )
@@ -134,7 +143,7 @@ def run_cv(cv, data_train_test, total_layers: int, nodes_per_hidden_layer: int, 
 
         model, optimal_epoch = train(optimizer, loss_fn, model, epochs, dataset_train, dataset_stop_early, batch_size, patience, weight_clipper, secs)
 
-        metrics['performance'].append(eval(model, dataset_test, batch_size))
+        metrics['performance'].append(eval(model, dataset_val, batch_size))
         metrics['epochs'].append(optimal_epoch)
         print(metrics['performance'][-1], metrics['epochs'][-1])  # TODO: remove debug metrics output
 
@@ -190,7 +199,7 @@ def train(optimizer, loss_fn, model: NeuralNetwork, epochs: int, dataset_train: 
 
 def stop_early(loss_history: list, model: NeuralNetwork, loss_fn, dataset_stop_early: Dataset, batch_size: int, patience: int = 10) -> tuple:
     # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-    loader_stop_early = torch.utils.data.DataLoader(dataset_stop_early, batch_size=batch_size)  # no need to shuffle in test
+    loader_stop_early = torch.utils.data.DataLoader(dataset_stop_early, batch_size=batch_size)  # no need to shuffle in eval
     
     model.eval()  # eval mode
     running_loss = 0
@@ -224,14 +233,14 @@ def stop_early(loss_history: list, model: NeuralNetwork, loss_fn, dataset_stop_e
     return False, -1
 
 
-def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
-    loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size)
+def eval(model: NeuralNetwork, dataset_eval: Dataset, batch_size: int) -> tuple:
+    loader_eval = torch.utils.data.DataLoader(dataset_eval, batch_size=batch_size)
     
     model.eval()  # eval mode
 
     batch_predictions = list()
     batch_targets = list()
-    for batch_input, batch_target in loader_test:
+    for batch_input, batch_target in loader_eval:
         with torch.no_grad():
             batch_output = model(*batch_input).flatten()
         batch_prediction = torch.sigmoid(batch_output)
@@ -249,7 +258,7 @@ def eval(model: NeuralNetwork, dataset_test: Dataset, batch_size: int) -> tuple:
     num_features_unconstrained = len(gs.get_unconstrained_features())
 
     nf = num_features_included / num_features_all  # via gs: relative # of included features
-    ni = 0  # via gs:
+    ni = 0  # via group structure:
     #   for each group with > 1 features: sum over range from 1 to (# of features in group - 1) -> # handshakes in party -> n choose 2
     #   then divide by # of all possible interactions (all_features choose 2)
     for (features, _) in gs.get_included_groups():
@@ -285,10 +294,10 @@ def binary_tournament(population, ranks_nds):
         return ids[0]
 
 
-def generate_offspring(la, population, ranks_nds, hp_bounds):
+def generate_offspring(lambd, population, ranks_nds, hp_bounds):
     offspring = list()
 
-    while len(offspring) <= la:
+    while len(offspring) <= lambd:
         id_parent_1 = binary_tournament(population, ranks_nds)
         id_parent_2 = binary_tournament(population, ranks_nds)
         parent_1 = population[id_parent_1]
@@ -330,7 +339,7 @@ def generate_offspring(la, population, ranks_nds, hp_bounds):
         offspring.append(child_1)
         offspring.append(child_2)
 
-    return offspring[:la]  # in case offsping is longer than la (while always adds 2 offspring)
+    return offspring[:lambd]  # in case offsping is longer than lambda (while always adds 2 offspring)
 
 
 def ea_mutate_gaussian(val, lower, upper):
