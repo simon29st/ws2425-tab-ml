@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from nds import ndomsort
 
 
-def run_eagga_cv(mu, lambd, cv_k, data_train_val, categorical_indicator, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs_per_fold: int = 5 * 60 * 60, secs_total: int = 30 * 60 * 60):
+def run_eagga_cv(mu, lambd, cv_k, data_train_val, categorical_indicator, class_column, class_positive, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs_per_fold: int = 5 * 60 * 60, secs_total: int = 30 * 60 * 60):
     # inner split
     cv_inner = StratifiedKFold(
         n_splits=cv_k,
@@ -31,10 +31,10 @@ def run_eagga_cv(mu, lambd, cv_k, data_train_val, categorical_indicator, epochs:
     population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, mu, hp_bounds['nodes_per_hidden_layer'][0], hp_bounds['nodes_per_hidden_layer'][1])
 
     all_features = list(i for i in range(len(data_train_val.columns) - 1))
-    population_features_included = [GroupStructure.detector_features(data_train_val, categorical_indicator) for _ in range(mu)]
+    population_features_included = [GroupStructure.detector_features(data_train_val, categorical_indicator, class_column) for _ in range(mu)]
     population_features_excluded = [list(set(all_features) - set(features_included)) for features_included in population_features_included]
-    population_interactions = [GroupStructure.detector_interactions(data_train_val, features_included) for features_included in population_features_included]
-    population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_val, groups_without_monotonicity) for groups_without_monotonicity in population_interactions]
+    population_interactions = [GroupStructure.detector_interactions(data_train_val, features_included, class_column) for features_included in population_features_included]
+    population_monotonicity_constraints = [GroupStructure.detector_monotonicity(data_train_val, groups_without_monotonicity, class_column) for groups_without_monotonicity in population_interactions]
 
     population = list()
 
@@ -49,85 +49,79 @@ def run_eagga_cv(mu, lambd, cv_k, data_train_val, categorical_indicator, epochs:
             *population_monotonicity_constraints[i][0]
         )
     } for i in range(mu)]
-
-    print('initial population')
-    [print(f'total layers {individual['total_layers']}, nodes_per_hidden_layer {individual['nodes_per_hidden_layer']}, gs: {individual['group_structure']}') for individual in offspring]
-
     
     time_start = datetime.now()
-    print(f'start EA at {time_start.isoformat()}')
+    print(f'Start EA at {time_start.isoformat()}')
 
     # evolutionary algorithm
     i_evolution = 0
     while(datetime.now() < time_start + timedelta(seconds=secs_total)):
         print(f'Evolution {i_evolution+1}, evaluate {len(offspring)} individuals')
-        for i, individual in enumerate(offspring):
-            total_layers = individual['total_layers']
-            nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
-            gs = individual['group_structure']
+        for i, indiv in enumerate(offspring):
+            total_layers = indiv['total_layers']
+            nodes_per_hidden_layer = indiv['nodes_per_hidden_layer']
+            gs = indiv['group_structure']
 
-            print(f'running HPO for individual {i+1}/{len(offspring)}: {total_layers} total_layers, {nodes_per_hidden_layer} nodes per hidden layer')
-            metrics = run_cv(cv_inner, data_train_val, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, patience, weight_clipper, secs_per_fold)
+            print(f'Running HPO for individual {i+1}/{len(offspring)}: {total_layers} total layers, {nodes_per_hidden_layer} nodes per hidden layer, gs: {indiv['group_structure']}')
+            metrics = run_cv(cv_inner, data_train_val, class_column, class_positive, total_layers, nodes_per_hidden_layer, gs, epochs, batch_size, patience, weight_clipper, secs_per_fold)
 
             offspring[i]['metrics'] = metrics
 
             if datetime.now() >= time_start + timedelta(seconds=secs_total):
+                offspring = offspring[:i+1]  # in case not all individuals in offspring were trained (due to max time overrun) -> only consider the trained ones for evaluation down below
                 break
         
         population += offspring
         ranks_nds = ndomsort.non_domin_sort(
-            [individual['metrics']['performance']['mean'] for individual in population],
+            [indiv['metrics']['performance']['mean'] for indiv in population],
             get_objectives=lambda elem: (1 - elem[0], *[elem[i] for i in range(1, len(elem))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
             only_front_indices=True
         )
         for i in range(len(population)):
             population[i]['rank_nds'] = ranks_nds[i]
-        population = sorted(population, key=lambda individual: individual['rank_nds'])[:mu]  # ascending order, lower ranks are better, then choose best mu individuals
-        print(f'population: {population}')
+        population = sorted(population, key=lambda indiv: indiv['rank_nds'])[:mu]  # ascending order, lower ranks are better, then choose best mu individuals
         
         offspring = generate_offspring(lambd, population, ranks_nds, hp_bounds)
-        for ind in offspring:
-            print(ind, ind['group_structure'])
 
         i_evolution += 1
     
-    print(f'finished EA at {datetime.now().isoformat()}')
+    print(f'Finished EA at {datetime.now().isoformat()}')
 
 
-def run_cv(cv, data_train_val, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
+def run_cv(cv, data_train_val, class_column: str, class_positive, total_layers: int, nodes_per_hidden_layer: int, group_structure: GroupStructure, epochs: int, batch_size: int, patience: int, weight_clipper=None, secs: int = 30 * 60 * 60):
     metrics = {
         'performance': list(),
         'epochs': list()
     }
 
-    for fold, (indices_train, indices_val) in enumerate(cv.split(X=data_train_val, y=data_train_val.loc[:, 'class'])):
-        print(f'fold {fold + 1}/{cv.get_n_splits()}', end=' | ')  # TODO: remove
+    for fold, (indices_train, indices_val) in enumerate(cv.split(X=data_train_val, y=data_train_val.loc[:, class_column])):
+        print(f'Fold {fold + 1}/{cv.get_n_splits()}', end=' | ')  # TODO: remove
 
         data_train_stop_early = data_train_val.loc[indices_train, :]
         data_train, data_stop_early = train_test_split(
             data_train_stop_early,
             train_size=0.8,
             shuffle=True,
-            stratify=data_train_stop_early.loc[:, 'class']
+            stratify=data_train_stop_early.loc[:, class_column]
         )
         dataset_train = Dataset(
-            X=data_train.loc[:, data_train.columns != 'class'],
-            y=data_train.loc[:, 'class'],
-            class_pos='tested_positive',
+            X=data_train.loc[:, data_train.columns != class_column],
+            y=data_train.loc[:, class_column],
+            class_pos=class_positive,
             group_structure=group_structure
         )
         dataset_stop_early = Dataset(
-            X=data_stop_early.loc[:, data_stop_early.columns != 'class'],
-            y=data_stop_early.loc[:, 'class'],
-            class_pos='tested_positive',
+            X=data_stop_early.loc[:, data_stop_early.columns != class_column],
+            y=data_stop_early.loc[:, class_column],
+            class_pos=class_positive,
             group_structure=group_structure
         )
 
         data_val = data_train_val.loc[indices_val, :]
         dataset_val = Dataset(
-            X=data_val.loc[:, data_val.columns != 'class'],
-            y=data_val.loc[:, 'class'],
-            class_pos='tested_positive',
+            X=data_val.loc[:, data_val.columns != class_column],
+            y=data_val.loc[:, class_column],
+            class_pos=class_positive,
             group_structure=group_structure
         )
 

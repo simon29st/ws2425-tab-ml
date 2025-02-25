@@ -170,12 +170,12 @@ class GroupStructure:
     
 
     @staticmethod
-    def detector_features(data, categorical_indicator) -> list:
+    def detector_features(data, categorical_indicator: list, class_column: str) -> list:
         p = data.shape[1] - 1  # not a probability, total # of features
         num_inclduded_features = Prob.r_trunc_geom(Prob.p_sample_features_selected, samples=1, val_min=1, val_max=p)
         info_gain = mutual_info_classif(
-            X=data.loc[:, data.columns != 'class'],
-            y=data.loc[:, 'class'],
+            X=data.loc[:, data.columns != class_column],
+            y=data.loc[:, class_column],
             discrete_features=categorical_indicator[:-1]  # TODO: check if a Dataset can be passed (instead of the pandas dataframe) + if so save categorical_indicator in the dataset
         )
         p_info_gain = info_gain / np.sum(info_gain)
@@ -196,17 +196,17 @@ class GroupStructure:
 
 
     @staticmethod
-    def detector_interactions(data, features_included: set) -> list:  # returns groups of included features without monotonicity attribute
+    def detector_interactions(data, features_included: set, class_column: str) -> list:  # returns groups of included features without monotonicity attribute
         p = len(features_included)  # not a probability, # of features included
         num_interactions = Prob.r_trunc_geom(Prob.p_sample_interactions, samples=1, val_min=1, val_max=p * (p - 1) / 2).item()
         
         poly = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
-        feature_names = data.loc[:, data.columns != 'class'].columns
+        feature_names = data.loc[:, data.columns != class_column].columns
         poly.feature_names_in_ = feature_names
 
-        X_interaction_terms = poly.fit_transform(  # X_interaction_terms doesn't include 'class', hence don't name 'data_*' but 'X_*'
-            X=data.iloc[:, data.columns != 'class'],
-            y=data.loc[:, 'class']
+        X_interaction_terms = poly.fit_transform(  # X_interaction_terms doesn't include class_column, hence don't name 'data_*' but 'X_*'
+            X=data.iloc[:, data.columns != class_column],
+            y=data.loc[:, class_column]
         )
         X_interaction_terms_columns = poly.get_feature_names_out().tolist()
 
@@ -214,7 +214,7 @@ class GroupStructure:
             data,
             train_size=0.8,
             shuffle=True,
-            stratify=data.loc[:, 'class']
+            stratify=data.loc[:, class_column]
         )
         idx_train = data_train.index
         idx_test = data_test.index
@@ -241,8 +241,8 @@ class GroupStructure:
                     continue
                 
                 log_mod = LogisticRegression(penalty=None)
-                log_mod = log_mod.fit(X=X_interaction_terms_train[:, features_included_list + [idx_interaction]], y=data.loc[idx_train, 'class'])
-                score_interaction[(i, j)] = log_mod.score(X=X_interaction_terms_test[:, features_included_list + [idx_interaction]], y=data.loc[idx_test, 'class'])
+                log_mod = log_mod.fit(X=X_interaction_terms_train[:, features_included_list + [idx_interaction]], y=data.loc[idx_train, class_column])
+                score_interaction[(i, j)] = log_mod.score(X=X_interaction_terms_test[:, features_included_list + [idx_interaction]], y=data.loc[idx_test, class_column])
 
         score_interactions_sorted = sorted(score_interaction.items(), key=lambda elem: elem[1], reverse=True)[:num_interactions]  # descending
         included_interactions = [elem[0] for elem in score_interactions_sorted]
@@ -277,26 +277,29 @@ class GroupStructure:
         
 
     @staticmethod
-    def detector_monotonicity(data, included_groups_without_monotonicity: list) -> tuple:
+    def detector_monotonicity(data, included_groups_without_monotonicity: list, class_column: str) -> tuple:
         feature_scores = list()
         feature_signs = list()
-        for feature in range(len(data.columns) - 1):  # only iterate over feature columns (data includes 'class' column)
+        for feature in range(len(data.columns) - 1):  # only iterate over feature columns (data includes class_column column)
             rhos = list()
             for _ in range(10):
                 data_train = resample(
                     data.iloc[:, :],
                     replace=True,
                     n_samples=round(0.9 * len(data.index)),
-                    stratify=data.loc[:, 'class']
+                    stratify=data.loc[:, class_column]
                 )
                 idx_data_train = data_train.index
                 data_test = data.loc[~data.index.isin(idx_data_train), :]
 
                 dec_tree = DecisionTreeClassifier(max_depth=30, min_samples_split=20)
-                dec_tree = dec_tree.fit(X=data_train.iloc[:, [feature]], y=data_train.loc[:, 'class'])  # expects DataFrame for X
+                dec_tree = dec_tree.fit(X=data_train.iloc[:, [feature]], y=data_train.loc[:, class_column])  # expects DataFrame for X
                 y_pred = dec_tree.predict(X=data_test.iloc[:, [feature]])  # expects DataFrame for X
 
-                rhos.append(spearmanr(a=data_test.iloc[:, feature], b=y_pred).statistic)
+                if data_test.iloc[:, feature].nunique() == 1 or np.unique(y_pred).shape[0] == 1:  # spearmanr only defined if no input is constant
+                    rhos.append(0)
+                else:
+                    rhos.append(spearmanr(a=data_test.iloc[:, feature], b=y_pred).statistic)
 
             rho_mean = np.mean(rhos)
             rho_sign = round(np.sign(rho_mean).item())
@@ -421,8 +424,8 @@ class GroupStructure:
 
 class Prob:
     p_sample_hps = 0.5
-    p_sample_features_selected = 0.5  # original paper uses relative # of features used across 10 decision trees, for our NN implementation just use 0.5
-    p_sample_interactions = 0.5  # original paper uses relative # of pairwise interactions used across 10 decision trees, for our NN implementation just use 0.5
+    p_sample_features_selected = 0.5  # original paper uses relative # of features used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
+    p_sample_interactions = 0.5  # original paper uses relative # of pairwise interactions used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
 
     p_ea_crossover_overall = 0.7
     p_ea_crossover_param = 0.5
