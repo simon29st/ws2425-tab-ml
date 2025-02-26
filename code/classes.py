@@ -354,36 +354,44 @@ class GroupStructure:
         return groups_included, feature_signs
     
 
-    def gga_mutate(self):
-        copy_excluded = self.excluded.copy()
+    @classmethod
+    def gga_mutate(cls, group_structure):
+        copy_excluded = group_structure.excluded.copy()
 
         for feature_excl in copy_excluded:
             if Prob.should_do(Prob.p_gga_mutate_feature):
-                self.excluded.remove(feature_excl)
-                if len(self.included) == 0:  # in case some previous mutation yielded a featureless learner (i.e. empty self.included) -> append new included group and add feature there
-                    self.included.append([
+                group_structure.excluded.remove(feature_excl)
+                if len(group_structure.included) == 0:  # in case some previous mutation yielded a featureless learner (i.e. empty group_structure.included) -> append new included group and add feature there
+                    group_structure.included.append([
                         [feature_excl],
-                        self.get_feature_signs()[feature_excl]
+                        group_structure.get_feature_signs()[feature_excl]
                     ])
                 else:  # regular case, there is at least 1 included group, i.e. at least 1 feature used in the learner
-                    index_group_new = np.random.randint(low=0, high=len(self.included), size=1).item()
-                    self.included[index_group_new][0].append(feature_excl)
+                    index_group_new = np.random.randint(low=0, high=len(group_structure.included), size=1).item()
+                    group_structure.included[index_group_new][0].append(feature_excl)
                     
-        copy_included = deepcopy(self.included)
+        copy_included = deepcopy(group_structure.included)
         
         for i, group in enumerate(copy_included):
             for feature_incl in group[0]:
                 if Prob.should_do(Prob.p_gga_mutate_feature):
-                    self.included[i][0].remove(feature_incl)
+                    group_structure.included[i][0].remove(feature_incl)
                     index_group_new = np.random.randint(low=0, high=1 + len(copy_included), size=1).item()
                     if index_group_new == 0:
-                        self.excluded.append(feature_incl)
+                        group_structure.excluded.append(feature_incl)
                     else:
-                        self.included[index_group_new - 1][0].append(feature_incl)
+                        group_structure.included[index_group_new - 1][0].append(feature_incl)
         
         for i, group in enumerate(copy_included):
             if Prob.should_do(Prob.p_gga_mutate_monotonicity):
-                self.included[i][1] = np.random.randint(low=-1, high=2, size=1).item()
+                group_structure.included[i][1] = np.random.randint(low=0, high=2, size=1).item()
+        
+        return cls(
+            group_structure.all_features,
+            group_structure.feature_signs,
+            group_structure.excluded,
+            *group_structure.included
+        )
 
 
     def get_crossing_section(self, bounds: list) -> list:
@@ -433,8 +441,8 @@ class GroupStructure:
                 self.included.append(group)
 
 
-    @classmethod
-    def gga_crossover(cls, parent_1, parent_2):
+    @staticmethod
+    def gga_crossover(parent_1, parent_2):
         bounds_1 = sorted(np.random.randint(low=0, high=len(parent_1), size=2))
         bounds_2 = sorted(np.random.randint(low=0, high=len(parent_2), size=2))
 
@@ -447,7 +455,7 @@ class GroupStructure:
         child_1.insert_crossing_section(crossing_section_2, cs_2_with_exclusion_group)
         child_2.insert_crossing_section(crossing_section_1, cs_1_with_exclusion_group)
 
-        return child_1, child_2
+        return GroupStructure.from_dict(child_1.to_dict()), GroupStructure.from_dict(child_2.to_dict())  # dict conversion simply re-triggers input validation in classmethod from_dict()
 
 
 class Prob:
@@ -815,7 +823,7 @@ class EAGGA:
                 child_2['group_structure'] = gs_2
             for child in [child_1, child_2]:  # mutate
                 if Prob.should_do(Prob.p_gga_mutate_overall):
-                    child['group_structure'].gga_mutate()
+                    child['group_structure'] = GroupStructure.gga_mutate(child['group_structure'])
 
             offspring.append(child_1)
             offspring.append(child_2)
