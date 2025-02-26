@@ -548,7 +548,12 @@ class EAGGA:
                     break  # don't train any more individuals if time ran out
             
             ranks_nds = ndomsort.non_domin_sort(
-                [individual['metrics']['performance']['mean'] for individual in self.population],
+                [(
+                    np.mean(individual['metrics']['performance']['auc']),
+                    individual['metrics']['performance']['nf'],
+                    individual['metrics']['performance']['ni'],
+                    individual['metrics']['performance']['nnm'],
+                ) for individual in self.population],
                 get_objectives=lambda performance_tup: (1 - performance_tup[0], *[performance_tup[i] for i in range(1, len(performance_tup))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
                 only_front_indices=True
             )
@@ -565,7 +570,7 @@ class EAGGA:
 
 
     # runs k-fold cv training with stopping early
-    def run_cv(self, individual):
+    def run_cv(self, individual) -> dict:
         total_layers = individual['total_layers']
         nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
         group_structure = individual['group_structure']
@@ -615,23 +620,22 @@ class EAGGA:
             optimizer = torch.optim.AdamW(model.parameters())
             loss_fn = nn.BCEWithLogitsLoss()
 
-            model, optimal_epoch = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
+            model, stop_epoch = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
-            metrics['epochs'].append(optimal_epoch)
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {optimal_epoch} epochs | metrics: {metrics['performance'][-1]}')  # TODO: remove
+            metrics['epochs'].append(stop_epoch)
+            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | metrics: {metrics['performance'][-1]}')  # TODO: remove
 
-        # TODO: no need to record NF, NI, NNM over folds and compute mean + var for them, as they stay the same in each fold
         return {
             'performance': {
-                'mean': np.mean(metrics['performance'], axis=0),
-                'var': np.var(metrics['performance'], axis=0),
-                'folds': metrics['performance']
+                # NF, NI, NNM constant for each fold (always same group structure)
+                'nf': metrics['performance'][0]['nf'],
+                'ni': metrics['performance'][0]['ni'],
+                'nnm': metrics['performance'][0]['nnm'],
+                'auc': [performance['auc'] for performance in metrics['performance']],
+                'loss' : [performance['loss'] for performance in metrics['performance']]
             },
-            'epochs': {
-                'mean': np.mean(metrics['epochs'], axis=0),
-                'folds': metrics['epochs']
-            }
+            'epochs': metrics['epochs']
         }
 
 
@@ -664,9 +668,9 @@ class EAGGA:
                     if monotonicity_constraint == 1:
                         model.networks[i].apply(self.monotonicity_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
             
-            should_stop_early, optimal_epoch = self. stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
+            should_stop_early, stop_epoch = self.stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
             if should_stop_early:
-                return model, optimal_epoch
+                return model, stop_epoch
             epoch += 1
         
         return model, epoch
@@ -675,21 +679,22 @@ class EAGGA:
     def stop_early(self, loss_history: list, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> tuple:
         # stopping criterion: mean of 'patience' previous losses over [t-patience, t] < current loss at t+1
         # if True -> go back to min loss within [t-patience, t]
-        loss = self.eval(loss_fn, model, dataset_stop_early, only_loss=True)
+        loss = self.eval(loss_fn, model, dataset_stop_early, only_loss=True)['loss']
         loss_history.append(loss)
 
         if len(loss_history) > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
             mask = np.ones_like(loss_history)
             mask[:-self.patience-1] = np.inf
-            optimal_epoch = np.argmin(mask * loss_history) + 1  # +1 to make it 1-based (as opposed to 0-based from np.argmin indexing)
-            print(f'Stop early: {np.mean(loss_history[-self.patience-1:-1])} < {loss}, optimal epoch {optimal_epoch}')
-            return True, optimal_epoch
-        
+            stop_epoch = np.argmin(mask * loss_history) + 1  # +1 to make it 1-based (as opposed to 0-based from np.argmin indexing)
+            print(f'Stop early: {np.mean(loss_history[-self.patience-1:-1])} < {loss}, epoch stop: {stop_epoch}')
+            return True, stop_epoch.item()
         return False, -1
     
 
     # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-    def eval(self, loss_fn, model: NeuralNetwork, dataset_eval: Dataset, only_loss: bool = False) -> tuple | float:
+    def eval(self, loss_fn, model: NeuralNetwork, dataset_eval: Dataset, only_loss: bool = False) -> dict:
+        res = dict()
+
         loader_eval = torch.utils.data.DataLoader(dataset_eval, batch_size=self.batch_size)
         
         model.eval()  # eval mode
@@ -708,37 +713,37 @@ class EAGGA:
             batch_targets.append(batch_target)
 
             running_loss += batch_loss.detach().item()
-        running_loss /= len(loader_eval)
+        res['loss'] = running_loss / len(loader_eval)
 
         if only_loss:
-            return running_loss
+            return res
 
         # compute AUC
         predictions = torch.cat(batch_predictions)
         targets = torch.cat(batch_targets)
-        auc = roc_auc_score(targets, predictions)
+        res['auc'] = roc_auc_score(targets, predictions)
         
         # compute interpretability metrics
         #   NF via group structure: relative # of included features
         #   NI via group structure:
         #       for each group with > 1 features: sum over range from 1 to (n - 1 = # of features in group - 1) -> # handshakes in party -> same as {n choose 2}
         #       then divide by # of all possible interactions {all_features choose 2}
-        #   NNM via
+        #   NNM via group structure: (# of features in groups without monotonicity constraint) / (total # of features)
         gs = model.get_group_structure()
         num_features_all = len(gs.get_all_features())
         num_features_included = len(gs.get_included_features())
         num_features_unconstrained = len(gs.get_unconstrained_features())
 
-        nf = num_features_included / num_features_all
-        ni = 0
+        res['nf'] = num_features_included / num_features_all
+        combs = 0
         for (features, _) in gs.get_included_groups():
             num_features_in_group = len(features)
             if num_features_in_group > 1:
-                ni += comb(num_features_in_group, 2)  # ni += sum(range(1, num_features_in_group))
-        ni /= comb(num_features_all, 2)
-        nnm = num_features_unconstrained / num_features_all  # via gs: (# of features in groups without monotonicity constraint) / (total # of features)
+                combs += comb(num_features_in_group, 2)  # combs += sum(range(1, num_features_in_group))
+        res['ni'] = combs / comb(num_features_all, 2)
+        res['nnm'] = num_features_unconstrained / num_features_all
         
-        return running_loss, auc.item(), nf, ni, nnm
+        return res
 
 
     def generate_offspring(self):
