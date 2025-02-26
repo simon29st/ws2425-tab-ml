@@ -19,6 +19,9 @@ from nds import ndomsort
 from math import comb
 from copy import deepcopy
 from datetime import datetime, timedelta
+import os
+from pathlib import Path
+import json
 
 
 class NeuralNetwork(nn.Module):
@@ -139,6 +142,27 @@ class GroupStructure:
 
     def __len__(self):
         return 1 + len(self.included)
+    
+
+    # used for saving to json
+    def to_dict(self):
+        return {
+            'all_features': self.all_features,
+            'feature_signs': self.feature_signs,
+            'excluded': self.excluded,
+            'included': self.included
+        }
+    
+
+    # used for loading from json
+    @classmethod
+    def from_dict(cls, inp):
+        return cls(
+            inp['all_features'],
+            inp['feature_signs'],
+            inp['excluded'],
+            *inp['included']
+        )
     
 
     def get_number_of_included_groups(self):
@@ -467,7 +491,7 @@ class Prob:
 
 
 class EAGGA:
-    def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, patience: int, secs_per_fold: int, secs_total: int):
+    def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
         self.data, _, self.categorical_indicator, _ = oml_dataset.get_data()
         self.class_column = oml_dataset.default_target_attribute
         self.class_positive = class_positive
@@ -501,6 +525,7 @@ class EAGGA:
 
         self.secs_per_fold = secs_per_fold
         self.secs_total = secs_total
+        self.file_path = file_path  # if not None -> autosave each generation, else do nothing
 
         self.monotonicity_clipper = WeightClipper(0, None)  # enforce monotonicity by clipping weights to [0, infty) after each epoch (in def train)
 
@@ -562,11 +587,15 @@ class EAGGA:
             self.population = sorted(self.population, key=lambda individual: individual['rank_nds'])[:self.hps['mu']]  # ascending order, lower ranks are better, choose best mu individuals
             
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
+                self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
+                self.autosave(gen)
                 break  # don't generate offspring if time ran out anyway
-            self.offspring = self.generate_offspring()
             
+            self.offspring = self.generate_offspring()
+            self.autosave(gen)
+
             gen += 1
-        print(f'Finished EAGGA at {datetime.now().isoformat()}')   
+        print(f'Finished EAGGA at {datetime.now().isoformat()}')
 
 
     # runs k-fold cv training with stopping early
@@ -814,6 +843,49 @@ class EAGGA:
         else:  # (b)
             # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance, computation cf. https://de.mathworks.com/matlabcentral/fileexchange/65809-on-the-calculation-of-crowding-distance
             return ids[0]
+        
+
+    def autosave(self, gen):
+        if self.file_path is not None:
+            file_path = EAGGA.create_file_path(self.file_path)
+            Path(file_path).mkdir(parents=True, exist_ok=True)
+
+            print(f'Autosaving generation {gen + 1} to {file_path}')
+
+            self.save_population(gen)
+    
+
+    def save_population(self, gen):
+        population = deepcopy(self.population)
+        offspring = deepcopy(self.offspring)
+        for individual in population:
+            individual['group_structure'] = individual['group_structure'].to_dict()
+        for individual in offspring:
+            individual['group_structure'] = individual['group_structure'].to_dict()
+
+        file_content = {
+            'population': population,
+            'offspring': offspring
+        }
+        with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{gen}.json')), 'w') as f:
+            json.dump(file_content, f)
+    
+
+    def load_population(self, gen):
+        with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{gen}.json')), 'r') as f:
+            file_content = json.load(f)
+        
+        self.population = file_content['population']
+        self.offspring = file_content['offspring']
+        for individual in self.population:
+            individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
+        for individual in self.offspring:
+            individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
+
+
+    @staticmethod
+    def create_file_path(file_path):
+        return file_path.replace('\\', '/')
     
 
     @staticmethod
