@@ -128,7 +128,7 @@ class GroupStructure:
                     self.all_features += g_k[0]
             else:
                 raise Exception('invalid group', g_k)
-        self.included = list(included)
+        self.included = [g_k for g_k in included if len(g_k[0]) > 0]  # consider all non-empty included groups, discard the rest (no rest to raise an exception)
 
         if set(all_features) != set(self.all_features):
             raise Exception(f'feature mismatch: {all_features} vs {self.all_features}')
@@ -522,6 +522,10 @@ class EAGGA:
         self.data_train_val = self.data_train_val.reset_index(drop=True)
         self.data_test = self.data_test.reset_index(drop=True)
 
+        majority_class = self.data_train_val.loc[:, self.class_column].mode().item()
+        majority_class_fraction = self.data_train_val.loc[self.data_train_val.loc[:, self.class_column] == majority_class, :].shape[0] / self.data_train_val.shape[0]
+        self.performance_majority_predictor = (majority_class_fraction, 0, 0, 0)
+
         # inner split, k-fold cross validation
         self.cv = StratifiedKFold(
             n_splits=self.hps['cv_k'],
@@ -565,7 +569,7 @@ class EAGGA:
         } for i in range(self.hps['mu'])]
 
 
-    def start_eagga(self):
+    def run_eagga(self):
         time_start = datetime.now()
         print(f'Start EAGGA at {time_start.isoformat()}')
 
@@ -586,11 +590,11 @@ class EAGGA:
                     individual['metrics']['performance']['nf'],
                     individual['metrics']['performance']['ni'],
                     individual['metrics']['performance']['nnm'],
-                ) for individual in self.population],
+                ) for individual in self.population] + [self.performance_majority_predictor],  # majority class predictor only used for non dominated sorting, won't even be looked at in loop over self.population below where we add pareto front ranks to the population because we add it at position len(self.population) in the performances to be ranked here
                 get_objectives=lambda performance_tup: (1 - performance_tup[0], *[performance_tup[i] for i in range(1, len(performance_tup))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
                 only_front_indices=True
             )
-            for i in range(len(self.population)):
+            for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended
                 self.population[i]['rank_nds'] = ranks_nds[i]
             self.population = sorted(self.population, key=lambda individual: individual['rank_nds'])[:self.hps['mu']]  # ascending order, lower ranks are better, choose best mu individuals
             
