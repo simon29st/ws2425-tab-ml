@@ -14,7 +14,8 @@ from sklearn.metrics import roc_auc_score
 
 from scipy.stats import spearmanr
 
-from nds import ndomsort
+from pymoo.operators.survival.rank_and_crowding.metrics import calc_crowding_distance
+from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 
 from math import comb
 from copy import deepcopy
@@ -204,7 +205,7 @@ class GroupStructure:
         info_gain = mutual_info_classif(
             X=data.loc[:, data.columns != class_column],
             y=data.loc[:, class_column],
-            discrete_features=categorical_indicator[:-1]  # TODO: check if a Dataset can be passed (instead of the pandas dataframe) + if so save categorical_indicator in the dataset
+            discrete_features=categorical_indicator[:-1]
         )
         p_info_gain = info_gain / np.sum(info_gain)
 
@@ -525,6 +526,7 @@ class EAGGA:
         majority_class = self.data_train_val.loc[:, self.class_column].mode().item()
         majority_class_fraction = self.data_train_val.loc[self.data_train_val.loc[:, self.class_column] == majority_class, :].shape[0] / self.data_train_val.shape[0]
         self.performance_majority_predictor = (majority_class_fraction, 0, 0, 0)
+        self.nds = NonDominatedSorting()
 
         # inner split, k-fold cross validation
         self.cv = StratifiedKFold(
@@ -584,18 +586,16 @@ class EAGGA:
                 if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                     break  # don't train any more individuals if time ran out
             
-            ranks_nds = ndomsort.non_domin_sort(
-                [(
-                    np.mean(individual['metrics']['performance']['auc']),
-                    individual['metrics']['performance']['nf'],
-                    individual['metrics']['performance']['ni'],
-                    individual['metrics']['performance']['nnm'],
-                ) for individual in self.population] + [self.performance_majority_predictor],  # majority class predictor only used for non dominated sorting, won't even be looked at in loop over self.population below where we add pareto front ranks to the population because we add it at position len(self.population) in the performances to be ranked here
-                get_objectives=lambda performance_tup: (1 - performance_tup[0], *[performance_tup[i] for i in range(1, len(performance_tup))]),  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
-                only_front_indices=True
-            )
+            metrics = [(
+                np.mean(individual['metrics']['performance']['auc']).item(),
+                individual['metrics']['performance']['nf'],
+                individual['metrics']['performance']['ni'],
+                individual['metrics']['performance']['nnm'],
+            ) for individual in self.population] + [self.performance_majority_predictor]  # majority class predictor only used for non dominated sorting, won't even be looked at in loop over self.population below where we add pareto front ranks to the population because we add it at position len(self.population) in the performances to be ranked here
+            metrics = [(1 - metric[0], *metric[1:]) for metric in metrics]  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
+            ranks_nds = self.nds.do(np.array(metrics), return_rank=True)[1]
             for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended
-                self.population[i]['rank_nds'] = ranks_nds[i]
+                self.population[i]['rank_nds'] = ranks_nds[i].item()
             self.population = sorted(self.population, key=lambda individual: individual['rank_nds'])[:self.hps['mu']]  # ascending order, lower ranks are better, choose best mu individuals
             
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
@@ -853,8 +853,15 @@ class EAGGA:
         if self.population[ids[0]]['rank_nds'] != self.population[ids[1]]['rank_nds']:  # (a)
             return sorted(ids, key=lambda id: self.population[id]['rank_nds'])[0]  # ascending order, lower ranks are better
         else:  # (b)
-            # skip (3, b, i+ii) for now, TODO: if time -> implement crowding distance, computation cf. https://de.mathworks.com/matlabcentral/fileexchange/65809-on-the-calculation-of-crowding-distance
-            return ids[0]
+            metrics = np.array([(
+                np.mean(individual['metrics']['performance']['auc']),
+                individual['metrics']['performance']['nf'],
+                individual['metrics']['performance']['ni'],
+                individual['metrics']['performance']['nnm'],
+            ) for individual in self.population])
+
+            cds = calc_crowding_distance(metrics)
+            return ids[np.argmax(cds[ids])]
         
 
     def autosave(self, gen):
