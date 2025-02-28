@@ -545,6 +545,7 @@ class EAGGA:
 
         self.offspring = self.init_population()
         self.population = list()
+        self.gen = 0
 
 
     def init_population(self):
@@ -575,9 +576,8 @@ class EAGGA:
         time_start = datetime.now()
         print(f'Start EAGGA at {time_start.isoformat()}')
 
-        gen = 0
         while(datetime.now() < time_start + timedelta(seconds=self.secs_total)):
-            print(f'Generation {gen+1}, evaluate {len(self.offspring)} individuals')
+            print(f'Generation {self.gen+1}, evaluate {len(self.offspring)} individuals')
 
             for individual in self.offspring:
                 individual['metrics'] = self.run_cv(individual)
@@ -600,13 +600,13 @@ class EAGGA:
             
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
-                self.autosave(gen)
+                self.autosave()
                 break  # don't generate offspring if time ran out anyway
             
             self.offspring = self.generate_offspring()
-            self.autosave(gen)
+            self.autosave()
 
-            gen += 1
+            self.gen += 1
         print(f'Finished EAGGA at {datetime.now().isoformat()}')
 
 
@@ -864,17 +864,17 @@ class EAGGA:
             return ids[np.argmax(cds[ids])]
         
 
-    def autosave(self, gen):
+    def autosave(self):
         if self.file_path is not None:
             file_path = EAGGA.create_file_path(self.file_path)
             Path(file_path).mkdir(parents=True, exist_ok=True)
 
-            print(f'Autosaving generation {gen + 1} to {file_path}')
+            print(f'Autosaving generation {self.gen + 1} to {file_path}')
 
-            self.save_population(gen)
+            self.save_population()
     
 
-    def save_population(self, gen):
+    def save_population(self):
         population = deepcopy(self.population)
         offspring = deepcopy(self.offspring)
         for individual in population:
@@ -886,7 +886,7 @@ class EAGGA:
             'population': population,
             'offspring': offspring
         }
-        with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{gen}.json')), 'w') as f:
+        with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
     
 
@@ -894,6 +894,7 @@ class EAGGA:
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{gen}.json')), 'r') as f:
             file_content = json.load(f)
         
+        self.gen = gen + 1
         self.population = file_content['population']
         self.offspring = file_content['offspring']
         for individual in self.population:
