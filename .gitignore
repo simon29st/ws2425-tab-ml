@@ -1,4 +1,11 @@
 .vscode/
+
 code/__pycache__/
 code/.venv/
 code/export/
+
+paper/
+!paper/jmlr2e.sty
+!paper/main.pdf
+!paper/main.tex
+!paper/references.bib
