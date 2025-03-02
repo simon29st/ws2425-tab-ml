@@ -841,9 +841,11 @@ class EAGGA:
             for child in [child_1, child_2]:  # mutate
                 if Prob.should_do(Prob.p_gga_mutate_overall):
                     child['group_structure'] = GroupStructure.gga_mutate(child['group_structure'])
-
-            offspring.append(child_1)
-            offspring.append(child_2)
+            
+            # add child to offspring if not featureless
+            for child in [child_1, child_2]:
+                if child['group_structure'].get_number_of_included_groups() > 0:
+                    offspring.append(child)
 
         return offspring[:self.hps['lambda']]  # in case offsping is longer than lambda (while-loop always adds 2 individuals), discard offspring after lambda
     
