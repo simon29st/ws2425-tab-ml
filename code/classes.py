@@ -895,12 +895,13 @@ class EAGGA:
 
         file_content = {
             'population': population,
-            'offspring': offspring
+            'offspring': offspring,
+            'pareto': self.pareto_front
         }
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
 
-        print('Saved population + offspring to file')
+        print('Saved population, offspring, pareto front to file')
     
 
     def load_population(self, gen):
@@ -914,8 +915,9 @@ class EAGGA:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
         for individual in self.offspring:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
+        self.pareto_front = file_content['pareto']
 
-        print('Loaded population + offspring from file, discarded previous population + offspring')
+        print('Loaded population, offspring, pareto front from file, discarded previous population, offspring, pareto front')
 
 
     @staticmethod
