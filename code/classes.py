@@ -625,7 +625,7 @@ class EAGGA:
         total_layers = individual['total_layers']
         nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
         group_structure = individual['group_structure']
-        print(f'Running {self.hps['cv_k']}-fold CV for individual: {total_layers} total layers, {nodes_per_hidden_layer} nodes per hidden layer, gs: {group_structure}')
+        print(f'Running {self.hps["cv_k"]}-fold CV for individual: {total_layers} total layers, {nodes_per_hidden_layer} nodes per hidden layer, gs: {group_structure}')
 
         metrics = {
             'performance': list(),
@@ -678,7 +678,7 @@ class EAGGA:
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
             metrics['epochs'].append(stop_epoch)
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | metrics: {metrics['performance'][-1]}')  # TODO: remove
+            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | metrics: {metrics["performance"][-1]}')  # TODO: remove
 
         return {
             'performance': {
