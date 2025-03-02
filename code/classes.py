@@ -586,18 +586,26 @@ class EAGGA:
                 if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                     break  # don't train any more individuals if time ran out
             
+            # create metrics list for computing non-dom-sort ranks + crowding distances
             metrics = [(
                 np.mean(individual['metrics']['performance']['auc']).item(),
                 individual['metrics']['performance']['nf'],
                 individual['metrics']['performance']['ni'],
                 individual['metrics']['performance']['nnm'],
-            ) for individual in self.population] + [self.performance_majority_predictor]  # majority class predictor only used for non dominated sorting, won't even be looked at in loop over self.population below where we add pareto front ranks to the population because we add it at position len(self.population) in the performances to be ranked here
-            metrics = [(1 - metric[0], *metric[1:]) for metric in metrics]  # compute pareto fronts w.r.t. reference (worst) point (0, 1, 1, 1)
-            ranks_nds = self.nds.do(np.array(metrics), return_rank=True)[1]
-            for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended
-                self.population[i]['rank_nds'] = ranks_nds[i].item()
-            self.population = sorted(self.population, key=lambda individual: individual['rank_nds'])[:self.hps['mu']]  # ascending order, lower ranks are better, choose best mu individuals
+            ) for individual in self.population]
+            metrics_nds = metrics + [self.performance_majority_predictor]  # majority class predictor only used for non dominated sorting, won't be assigned to an individual in loop over self.population below where we add front ranks + cds to the population
+            metrics_nds = [(1 - metric[0], *metric[1:]) for metric in metrics_nds]  # computing fronts assumes minimisation objective -> reference (worst) point (0, 1, 1, 1) -> inverse AUC sign
             
+            ranks_nds = self.nds.do(np.array(metrics_nds), return_rank=True)[1]
+            cds = calc_crowding_distance(np.array(metrics))
+
+            for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended (iter from 0 to len(self.population) - 1)
+                self.population[i]['rank_nds'] = ranks_nds[i].item()
+                self.population[i]['cd'] = cds[i].item()
+            self.population = sorted(self.population, key=lambda individual: (individual['rank_nds'], -individual['cd']))[:self.hps['mu']]  # ascending order of front ranks (lower is better), descending order of crowding distance for tied ranks (larger is more important for front), choose best mu individuals
+            
+            print([(individual['rank_nds'], individual['cd']) for individual in self.population])
+
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
                 self.autosave()
@@ -842,26 +850,13 @@ class EAGGA:
         (2) non-dominated sorting -> rank pareto fronts
         (3)
         (a) if the sampled ids are in differently ranked pareto fronts -> return id with lower pareto front rank
-        (b) else (sampled ids are from same pareto front)
-        (i)     compute crowding distance
-        (ii)    return id with larger crowding distance
+        (b) else (sampled ids are from same pareto front) -> return id with larger crowding distance
         '''
         # (1)
         ids = np.random.choice(a=len(self.population), size=2, replace=False)#.tolist()
-        # (2) ranks_nds taken from EA loop
-        # (3)
-        if self.population[ids[0]]['rank_nds'] != self.population[ids[1]]['rank_nds']:  # (a)
-            return sorted(ids, key=lambda id: self.population[id]['rank_nds'])[0]  # ascending order, lower ranks are better
-        else:  # (b)
-            metrics = np.array([(
-                np.mean(individual['metrics']['performance']['auc']),
-                individual['metrics']['performance']['nf'],
-                individual['metrics']['performance']['ni'],
-                individual['metrics']['performance']['nnm'],
-            ) for individual in self.population])
-
-            cds = calc_crowding_distance(metrics)
-            return ids[np.argmax(cds[ids])]
+        # (2), (3) self.population already sorted by front ranks (asc) and then ties by crowding distance (desc)
+        # -> simply return min(ids)
+        return min(ids)
         
 
     def autosave(self):
@@ -888,6 +883,8 @@ class EAGGA:
         }
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
+
+        print('Saved population + offspring to file')
     
 
     def load_population(self, gen):
@@ -901,6 +898,8 @@ class EAGGA:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
         for individual in self.offspring:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
+
+        print('Loaded population + offspring from file, discarded previous population + offspring')
 
 
     @staticmethod
