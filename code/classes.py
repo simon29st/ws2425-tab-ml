@@ -745,7 +745,6 @@ class EAGGA:
         loss_history.append(loss)
 
         if len(loss_history) > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
-            print(f'Stop early: {np.mean(loss_history[-self.patience-1:-1])} < {loss}')
             return True
         return False
     
