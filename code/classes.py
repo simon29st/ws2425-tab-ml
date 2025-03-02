@@ -14,6 +14,7 @@ from sklearn.metrics import roc_auc_score
 
 from scipy.stats import spearmanr
 
+from pymoo.indicators.hv import HV
 from pymoo.operators.survival.rank_and_crowding.metrics import calc_crowding_distance
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 
@@ -490,7 +491,6 @@ class Prob:
 
     @staticmethod
     def should_do(p: float):
-        return 1  # TODO: remove
         return np.random.uniform() <= p
     
 
@@ -530,6 +530,7 @@ class EAGGA:
         majority_class_fraction = self.data_train_val.loc[self.data_train_val.loc[:, self.class_column] == majority_class, :].shape[0] / self.data_train_val.shape[0]
         self.performance_majority_predictor = (majority_class_fraction, 0, 0, 0)
         self.nds = NonDominatedSorting()
+        self.hv = HV(ref_point=(1, 1, 1, 1), nds=False)  # set ref-pt to (1, 1, 1, 1), as pymoo always minimises, i.e. ref-pt (0, 1, 1, 1) would consider 0 to be largest value in first dim + result in hypervolume = 0, instead transform first dim of points so that auc becomes minimisation problem (via 1 - auc)
 
         # inner split, k-fold cross validation
         self.cv = StratifiedKFold(
@@ -575,6 +576,7 @@ class EAGGA:
         } for i in range(self.hps['mu'])]
 
 
+    # returns Pareto front
     def run_eagga(self):
         time_start = datetime.now()
         print(f'Start EAGGA at {time_start.isoformat()}')
@@ -598,8 +600,9 @@ class EAGGA:
             ) for individual in self.population]
             metrics_nds = metrics + [self.performance_majority_predictor]  # majority class predictor only used for non dominated sorting, won't be assigned to an individual in loop over self.population below where we add front ranks + cds to the population
             metrics_nds = [(1 - metric[0], *metric[1:]) for metric in metrics_nds]  # computing fronts assumes minimisation objective -> reference (worst) point (0, 1, 1, 1) -> inverse AUC sign
-            
-            ranks_nds = self.nds.do(np.array(metrics_nds), return_rank=True)[1]
+            metrics_nds_np = np.array(metrics_nds)
+
+            fronts, ranks_nds = self.nds.do(metrics_nds_np, return_rank=True)
             cds = calc_crowding_distance(np.array(metrics))
 
             for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended (iter from 0 to len(self.population) - 1)
@@ -607,7 +610,9 @@ class EAGGA:
                 self.population[i]['cd'] = cds[i].item()
             self.population = sorted(self.population, key=lambda individual: (individual['rank_nds'], -individual['cd']))[:self.hps['mu']]  # ascending order of front ranks (lower is better), descending order of crowding distance for tied ranks (larger is more important for front), choose best mu individuals
             
-            print([(individual['rank_nds'], individual['cd']) for individual in self.population])
+            pareto_front_idx = fronts[0]
+            self.pareto_front = metrics_nds_np[pareto_front_idx]
+            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {self.pareto_front}')
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
@@ -617,8 +622,10 @@ class EAGGA:
             self.offspring = self.generate_offspring()
             self.autosave()
 
-            self.gen += 1
+            self.gen += 1 
         print(f'Finished EAGGA at {datetime.now().isoformat()}')
+
+        return self.pareto_front
 
 
     # runs k-fold cv training with stopping early
@@ -675,11 +682,11 @@ class EAGGA:
             optimizer = torch.optim.AdamW(model.parameters())
             loss_fn = nn.BCEWithLogitsLoss()
 
-            model, stop_epoch = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
+            model, stop_epoch, stopped_early = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
             metrics['epochs'].append(stop_epoch)
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | metrics: {metrics["performance"][-1]}')  # TODO: remove
+            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
 
         return {
             'performance': {
@@ -725,10 +732,10 @@ class EAGGA:
             
             should_stop_early = self.stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
             if should_stop_early:
-                return model, epoch
+                return model, epoch, True
             epoch += 1
         
-        return model, epoch
+        return model, epoch, False
     
 
     def stop_early(self, loss_history: list, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> bool:
