@@ -722,27 +722,24 @@ class EAGGA:
                     if monotonicity_constraint == 1:
                         model.networks[i].apply(self.monotonicity_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
             
-            should_stop_early, stop_epoch = self.stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
+            should_stop_early = self.stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
             if should_stop_early:
-                return model, stop_epoch
+                return model, epoch
             epoch += 1
         
         return model, epoch
     
 
-    def stop_early(self, loss_history: list, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> tuple:
+    def stop_early(self, loss_history: list, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> bool:
         # stopping criterion: mean of 'patience' previous losses over [t-patience, t] < current loss at t+1
         # if True -> go back to min loss within [t-patience, t]
         loss = self.eval(loss_fn, model, dataset_stop_early, only_loss=True)['loss']
         loss_history.append(loss)
 
         if len(loss_history) > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
-            mask = np.ones_like(loss_history)
-            mask[:-self.patience-1] = np.inf
-            stop_epoch = np.argmin(mask * loss_history) + 1  # +1 to make it 1-based (as opposed to 0-based from np.argmin indexing)
-            print(f'Stop early: {np.mean(loss_history[-self.patience-1:-1])} < {loss}, epoch stop: {stop_epoch}')
-            return True, stop_epoch.item()
-        return False, -1
+            print(f'Stop early: {np.mean(loss_history[-self.patience-1:-1])} < {loss}')
+            return True
+        return False
     
 
     # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
