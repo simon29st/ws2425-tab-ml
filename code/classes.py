@@ -611,8 +611,8 @@ class EAGGA:
             self.population = sorted(self.population, key=lambda individual: (individual['rank_nds'], -individual['cd']))[:self.hps['mu']]  # ascending order of front ranks (lower is better), descending order of crowding distance for tied ranks (larger is more important for front), choose best mu individuals
             
             pareto_front_idx = fronts[0]
-            self.pareto_front = metrics_nds_np[pareto_front_idx]
-            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {self.pareto_front}')
+            self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
+            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {np.subtract(self.pareto_front, (1, 0, 0, 0))}')
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
@@ -707,7 +707,8 @@ class EAGGA:
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True)
 
         epoch = 0
-        loss_history_early_stopping = list()
+        loss_history = list()
+        current_best = (0, model)  # (epoch, model at epoch)
         time_start = datetime.now()
         while(datetime.now() < time_start + timedelta(seconds=self.secs_per_fold)):
             model.train()  # training mode, put here as we switch to eval mode at the end of each epoch in def stop_early
@@ -730,23 +731,27 @@ class EAGGA:
                     if monotonicity_constraint == 1:
                         model.networks[i].apply(self.monotonicity_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
             
-            should_stop_early = self.stop_early(loss_history_early_stopping, loss_fn, model, dataset_stop_early)
+            should_stop_early, current_best = self.stop_early(loss_history, current_best, loss_fn, model, dataset_stop_early)
             if should_stop_early:
-                return model, epoch, True
+                return current_best[1], current_best[0], True
             epoch += 1
         
-        return model, epoch, False
+        return current_best[1], current_best[0], False
     
 
-    def stop_early(self, loss_history: list, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> bool:
+    def stop_early(self, loss_history: list, current_best: tuple, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> tuple:
         # stopping criterion: mean of 'patience' previous losses over [t-patience, t] < current loss at t+1
-        # if True -> go back to min loss within [t-patience, t]
+        # if True -> go back to model with min loss within [t-patience, t]
         loss = self.eval(loss_fn, model, dataset_stop_early, only_loss=True)['loss']
         loss_history.append(loss)
 
-        if len(loss_history) > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
-            return True
-        return False
+        epoch = len(loss_history) - 1
+        if loss < loss_history[current_best[0]]:
+            current_best = (epoch, deepcopy(model))
+
+        if epoch > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
+            return True, current_best
+        return False, current_best
     
 
     # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
