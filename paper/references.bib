@@ -1,0 +1,20 @@
+# [1 Introduction]
+
+% https://dl.acm.org/doi/10.1145/3583131.3590380
+@inproceedings{EAGGA,
+  author = {Schneider, Lennart and Bischl, Bernd and Thomas, Janek},
+  title = {Multi-Objective Optimization of Performance and Interpretability of Tabular Supervised Machine Learning Models},
+  year = {2023},
+  isbn = {9798400701191},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/3583131.3590380},
+  doi = {10.1145/3583131.3590380},
+  abstract = {We present a model-agnostic framework for jointly optimizing the predictive performance and interpretability of supervised machine learning models for tabular data. Interpretability is quantified via three measures: feature sparsity, interaction sparsity of features, and sparsity of non-monotone feature effects. By treating hyperparameter optimization of a machine learning algorithm as a multi-objective optimization problem, our framework allows for generating diverse models that trade off high performance and ease of interpretability in a single optimization run. Efficient optimization is achieved via augmentation of the search space of the learning algorithm by incorporating feature selection, interaction and monotonicity constraints into the hyperparameter search space. We demonstrate that the optimization problem effectively translates to finding the Pareto optimal set of groups of selected features that are allowed to interact in a model, along with finding their optimal monotonicity constraints and optimal hyperparameters of the learning algorithm itself. We then introduce a novel evolutionary algorithm that can operate efficiently on this augmented search space. In benchmark experiments, we show that our framework is capable of finding diverse models that are highly competitive or outperform state-of-the-art XGBoost or Explainable Boosting Machine models, both with respect to performance and interpretability.},
+  booktitle = {Proceedings of the Genetic and Evolutionary Computation Conference},
+  pages = {538–547},
+  numpages = {10},
+  keywords = {group structure, evolutionary computation, multi-objective, tabular data, interpretability, performance, supervised learning},
+  location = {Lisbon, Portugal},
+  series = {GECCO '23}
+}
