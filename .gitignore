@@ -1,7 +1,9 @@
 .vscode/
+.ipynb_checkpoints/
 
 code/__pycache__/
 code/.venv/
+code/.ipynb_checkpoints/
 code/export/
 
 paper/
