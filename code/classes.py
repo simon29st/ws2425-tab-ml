@@ -482,7 +482,7 @@ class Prob:
 
         draws_unif = np.random.uniform(low=0, high=1, size=samples)
         draws_trunc_geom = np.ceil(  # round with np.ceil, as support of trunc geom in (a, b], cf. https://en.wikipedia.org/wiki/Truncated_distribution
-            np.log(np.pow(1 - p, a) - draws_unif * (np.pow(1 - p, a) - np.pow(1 - p, b))) / np.log(1 - p),
+            np.log(np.power(1 - p, a) - draws_unif * (np.power(1 - p, a) - np.power(1 - p, b))) / np.log(1 - p),
         ).astype(int)
         
         return draws_trunc_geom
