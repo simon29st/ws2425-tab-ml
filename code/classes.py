@@ -686,7 +686,7 @@ class EAGGA:
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
             metrics['epochs'].append(stop_epoch)
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch} epochs | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
+            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
 
         return {
             'performance': {
