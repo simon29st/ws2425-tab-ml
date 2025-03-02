@@ -84,10 +84,10 @@ class WeightClipper:
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, X: pd.DataFrame, y: pd.Series, class_pos: str, group_structure):
-        self.X = torch.tensor(X.values, dtype=torch.float)
+    def __init__(self, X: pd.DataFrame, y: pd.Series, class_pos: str, group_structure, device):
+        self.X = torch.tensor(X.values, dtype=torch.float).to(device)
 
-        self.y = torch.zeros(len(y.index))
+        self.y = torch.zeros(len(y.index)).to(device)
         self.y[y.reset_index(drop=True) == class_pos] = 1
         
         self.feature_groups = group_structure.get_included_groups_features()
@@ -501,6 +501,8 @@ class Prob:
 
 class EAGGA:
     def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
         self.data, _, self.categorical_indicator, _ = oml_dataset.get_data()
         self.class_column = oml_dataset.default_target_attribute
         self.class_positive = class_positive
@@ -642,13 +644,15 @@ class EAGGA:
                 X=data_train.loc[:, data_train.columns != self.class_column],
                 y=data_train.loc[:, self.class_column],
                 class_pos=self.class_positive,
-                group_structure=group_structure
+                group_structure=group_structure,
+                device=self.device
             )
             dataset_stop_early = Dataset(
                 X=data_stop_early.loc[:, data_stop_early.columns != self.class_column],
                 y=data_stop_early.loc[:, self.class_column],
                 class_pos=self.class_positive,
-                group_structure=group_structure
+                group_structure=group_structure,
+                device=self.device
             )
 
             data_val = self.data_train_val.loc[indices_val, :]
@@ -656,7 +660,8 @@ class EAGGA:
                 X=data_val.loc[:, data_val.columns != self.class_column],
                 y=data_val.loc[:, self.class_column],
                 class_pos=self.class_positive,
-                group_structure=group_structure
+                group_structure=group_structure,
+                device=self.device
             )
 
             model = NeuralNetwork(
@@ -664,7 +669,7 @@ class EAGGA:
                 output_size=1,  # we only use binary datasets
                 total_layers=total_layers,
                 nodes_per_hidden_layer=nodes_per_hidden_layer
-            )
+            ).to(self.device)
 
             optimizer = torch.optim.AdamW(model.parameters())
             loss_fn = nn.BCEWithLogitsLoss()
