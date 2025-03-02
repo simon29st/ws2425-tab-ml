@@ -501,7 +501,8 @@ class Prob:
 
 class EAGGA:
     def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device_cpu = torch.device('cpu')
+        self.device_cuda = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         self.data, _, self.categorical_indicator, _ = oml_dataset.get_data()
         self.class_column = oml_dataset.default_target_attribute
@@ -645,14 +646,14 @@ class EAGGA:
                 y=data_train.loc[:, self.class_column],
                 class_pos=self.class_positive,
                 group_structure=group_structure,
-                device=self.device
+                device=self.device_cuda
             )
             dataset_stop_early = Dataset(
                 X=data_stop_early.loc[:, data_stop_early.columns != self.class_column],
                 y=data_stop_early.loc[:, self.class_column],
                 class_pos=self.class_positive,
                 group_structure=group_structure,
-                device=self.device
+                device=self.device_cuda
             )
 
             data_val = self.data_train_val.loc[indices_val, :]
@@ -661,7 +662,7 @@ class EAGGA:
                 y=data_val.loc[:, self.class_column],
                 class_pos=self.class_positive,
                 group_structure=group_structure,
-                device=self.device
+                device=self.device_cuda
             )
 
             model = NeuralNetwork(
@@ -669,7 +670,7 @@ class EAGGA:
                 output_size=1,  # we only use binary datasets
                 total_layers=total_layers,
                 nodes_per_hidden_layer=nodes_per_hidden_layer
-            ).to(self.device)
+            ).to(self.device_cuda)
 
             optimizer = torch.optim.AdamW(model.parameters())
             loss_fn = nn.BCEWithLogitsLoss()
@@ -770,8 +771,8 @@ class EAGGA:
             return res
 
         # compute AUC
-        predictions = torch.cat(batch_predictions)
-        targets = torch.cat(batch_targets)
+        predictions = torch.cat(batch_predictions).to(self.device_cpu)
+        targets = torch.cat(batch_targets).to(self.device_cpu)
         res['auc'] = roc_auc_score(targets, predictions)
         
         # compute interpretability metrics
