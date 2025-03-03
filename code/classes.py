@@ -584,7 +584,8 @@ class EAGGA:
         while(datetime.now() < time_start + timedelta(seconds=self.secs_total)):
             print(f'Generation {self.gen+1}, evaluate {len(self.offspring)} individuals')
 
-            for individual in self.offspring:
+            for i, individual in enumerate(self.offspring):
+                print(f'Running {self.hps["cv_k"]}-fold CV for individual {i+1}/{len(self.offspring)}: {individual["total_layers"]} total layers, {individual["nodes_per_hidden_layer"]} nodes per hidden layer, gs: {individual["group_structure"]}')
                 individual['metrics'] = self.run_cv(individual)
                 self.population.append(individual)
 
@@ -633,7 +634,6 @@ class EAGGA:
         total_layers = individual['total_layers']
         nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
         group_structure = individual['group_structure']
-        print(f'Running {self.hps["cv_k"]}-fold CV for individual: {total_layers} total layers, {nodes_per_hidden_layer} nodes per hidden layer, gs: {group_structure}')
 
         metrics = {
             'performance': list(),
