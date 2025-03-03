@@ -642,7 +642,7 @@ class EAGGA:
             
             pareto_front_idx = fronts[0]
             self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
-            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {self.pareto_front}')
+            print(f'Dominated Hypervolume: {self.hv(metrics_nds_np[pareto_front_idx])} for Pareto front {self.pareto_front}')
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
