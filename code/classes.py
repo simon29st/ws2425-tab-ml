@@ -27,7 +27,7 @@ import json
 
 
 class NeuralNetwork(nn.Module):
-    def __init__(self, group_structure, output_size, total_layers, nodes_per_hidden_layer):
+    def __init__(self, group_structure, output_size, total_layers, nodes_per_hidden_layer, p_dropout):
         super().__init__()
 
         self.group_structure = group_structure
@@ -42,11 +42,13 @@ class NeuralNetwork(nn.Module):
             # input layer
             modules.append(nn.Linear(len(features), nodes_per_hidden_layer))
             modules.append(nn.ReLU())
+            modules.append(nn.Dropout(p_dropout))
 
             # hidden layers
             for _ in range(1, total_layers-1):
                 modules.append(nn.Linear(nodes_per_hidden_layer, nodes_per_hidden_layer))
                 modules.append(nn.ReLU())
+                modules.append(nn.Dropout(p_dropout))
             
             network_for_group = nn.Sequential(*modules)
             self.networks.append(network_for_group)
@@ -462,6 +464,8 @@ class GroupStructure:
 
 class Prob:
     p_sample_hps = 0.5
+    gamma_shape = 2
+    gamma_scale = 0.2
     p_sample_features_selected = 0.5  # original paper uses relative # of features used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
     p_sample_interactions = 0.5  # original paper uses relative # of pairwise interactions used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
 
@@ -490,6 +494,26 @@ class Prob:
     
 
     @staticmethod
+    def r_trunc_gamma(shape: float, scale: float, samples: int, val_max: int = 1):
+        draws_trunc_gamma = np.random.gamma(shape=shape, scale=scale, size=samples)
+
+        idx = np.argwhere(draws_trunc_gamma > val_max)
+        while len(idx) > 0:
+            draws_trunc_gamma[idx] = np.random.gamma(shape=shape, scale=scale, size=samples)[idx]
+            idx = np.argwhere(draws_trunc_gamma > val_max)
+
+        return np.round(draws_trunc_gamma, 2)
+    
+
+    @staticmethod
+    def ea_mutate_gaussian(val, lower, upper):
+        val = (val - lower) / (upper - lower)
+        val = np.random.normal(loc=val, scale=0.1, size=1).item()
+        val = (val * (upper - lower)) + lower
+        return min(max(val, lower), upper)
+            
+
+    @staticmethod
     def should_do(p: float):
         return np.random.uniform() <= p
     
@@ -500,7 +524,7 @@ class Prob:
 
 
 class EAGGA:
-    def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
+    def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, min_epochs: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
         self.device_cpu = torch.device('cpu')
         self.device_cuda = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
@@ -539,6 +563,7 @@ class EAGGA:
         )
 
         self.batch_size = batch_size
+        self.min_epochs = min_epochs
         self.patience = patience
 
         self.secs_per_fold = secs_per_fold
@@ -556,6 +581,7 @@ class EAGGA:
         print('Starting init population')
         population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['total_layers'][0], self.hps['total_layers'][1])
         population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
+        population_p_dropout = Prob.r_trunc_gamma(Prob.gamma_shape, Prob.gamma_scale, self.hps['mu'], 1)
 
         all_features = list(i for i in range(len(self.data_train_val.columns) - 1))
         population_features_included = [GroupStructure.detector_features(self.data_train_val, self.categorical_indicator, self.class_column) for _ in range(self.hps['mu'])]
@@ -567,6 +593,7 @@ class EAGGA:
         return [{
             'total_layers': population_layers[i].item(),
             'nodes_per_hidden_layer': population_nodes[i].item(),
+            'p_dropout': population_p_dropout[i].item(),
             'group_structure': GroupStructure(
                 all_features,
                 population_monotonicity_constraints[i][1],
@@ -585,7 +612,7 @@ class EAGGA:
             print(f'Generation {self.gen+1}, evaluate {len(self.offspring)} individuals')
 
             for i, individual in enumerate(self.offspring):
-                print(f'Running {self.hps["cv_k"]}-fold CV for individual {i+1}/{len(self.offspring)}: {individual["total_layers"]} total layers, {individual["nodes_per_hidden_layer"]} nodes per hidden layer, gs: {individual["group_structure"]}')
+                print(f'Running {self.hps["cv_k"]}-fold CV for individual {i+1}/{len(self.offspring)}: {individual["total_layers"]} total layers, {individual["nodes_per_hidden_layer"]} nodes per hidden layer, dropout p {individual["p_dropout"]}, gs: {individual["group_structure"]}')
                 individual['metrics'] = self.run_cv(individual)
                 self.population.append(individual)
 
@@ -633,6 +660,7 @@ class EAGGA:
     def run_cv(self, individual) -> dict:
         total_layers = individual['total_layers']
         nodes_per_hidden_layer = individual['nodes_per_hidden_layer']
+        p_dropout = individual['p_dropout']
         group_structure = individual['group_structure']
 
         metrics = {
@@ -676,7 +704,8 @@ class EAGGA:
                 group_structure=group_structure,
                 output_size=1,  # we only use binary datasets
                 total_layers=total_layers,
-                nodes_per_hidden_layer=nodes_per_hidden_layer
+                nodes_per_hidden_layer=nodes_per_hidden_layer,
+                p_dropout=p_dropout
             ).to(self.device_cuda)
 
             optimizer = torch.optim.AdamW(model.parameters())
@@ -751,7 +780,7 @@ class EAGGA:
         if loss < loss_history[current_best[0]]:
             current_best = (epoch, deepcopy(model))
 
-        if epoch > self.patience and np.mean(loss_history[-self.patience-1:-1]) < loss:
+        if epoch > max(self.min_epochs, self.patience) and np.mean(loss_history[-self.patience-1:-1]) < loss:
             return True, current_best
         return False, current_best
     
@@ -838,14 +867,19 @@ class EAGGA:
                 if Prob.should_do(Prob.p_ea_crossover_param):
                     child_1['nodes_per_hidden_layer'] = parent_2['nodes_per_hidden_layer']
                     child_2['nodes_per_hidden_layer'] = parent_1['nodes_per_hidden_layer']
+                if Prob.should_do(Prob.p_ea_crossover_param):
+                    child_1['p_dropout'] = parent_2['p_dropout']
+                    child_2['p_dropout'] = parent_1['p_dropout']
             for child in [child_1, child_2]:  # Gaussian mutation
                 if Prob.should_do(Prob.p_ea_mutate_overall):
                     if Prob.should_do(Prob.p_ea_mutate_param):
-                        child['total_layers'] = EAGGA.ea_mutate_gaussian(child['total_layers'], self.hps['total_layers'][0], self.hps['total_layers'][1])
+                        child['total_layers'] = Prob.ea_mutate_gaussian(child['total_layers'], self.hps['total_layers'][0], self.hps['total_layers'][1])
                         child['total_layers'] = round(child['total_layers'])
                     if Prob.should_do(Prob.p_ea_mutate_param):
-                        child['nodes_per_hidden_layer'] = EAGGA.ea_mutate_gaussian(child['nodes_per_hidden_layer'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
+                        child['nodes_per_hidden_layer'] = Prob.ea_mutate_gaussian(child['nodes_per_hidden_layer'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
                         child['nodes_per_hidden_layer'] = round(child['nodes_per_hidden_layer'])
+                    if Prob.should_do(Prob.p_ea_mutate_param):
+                        child['p_dropout'] = Prob.ea_mutate_gaussian(child['p_dropout'], 0, 1)
 
             # GGA on group structure
             if Prob.should_do(Prob.p_gga_crossover):  # crossover
@@ -934,11 +968,3 @@ class EAGGA:
     @staticmethod
     def create_file_path(file_path):
         return file_path.replace('\\', '/')
-    
-
-    @staticmethod
-    def ea_mutate_gaussian(val, lower, upper):
-        val = (val - lower) / (upper - lower)
-        val = np.random.normal(loc=val, scale=0.1, size=1).item()
-        val = (val * (upper - lower)) + lower
-        return min(max(val, lower), upper)
