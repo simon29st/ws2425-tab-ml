@@ -612,7 +612,7 @@ class EAGGA:
             
             pareto_front_idx = fronts[0]
             self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
-            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {np.subtract(self.pareto_front, (1, 0, 0, 0))}')
+            print(f'Dominated Hypervolume: {self.hv(self.pareto_front)} for Pareto front {self.pareto_front}')
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
@@ -682,11 +682,12 @@ class EAGGA:
             optimizer = torch.optim.AdamW(model.parameters())
             loss_fn = nn.BCEWithLogitsLoss()
 
-            model, stop_epoch, stopped_early = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
+            model, stop_epoch, stop_secs, stopped_early, losses_stop_early = self.train(optimizer, loss_fn, model, dataset_train, dataset_stop_early)
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
+            metrics['performance'][-1]['losses_stop_early'] = losses_stop_early
             metrics['epochs'].append(stop_epoch)
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
+            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs / {round(stop_secs.total_seconds(), 3)} seconds | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
 
         return {
             'performance': {
@@ -695,7 +696,7 @@ class EAGGA:
                 'ni': metrics['performance'][0]['ni'],
                 'nnm': metrics['performance'][0]['nnm'],
                 'auc': [performance['auc'] for performance in metrics['performance']],
-                'loss' : [performance['loss'] for performance in metrics['performance']]
+                'loss': [(performance['loss'], performance['losses_stop_early']) for performance in metrics['performance']],
             },
             'epochs': metrics['epochs']
         }
@@ -733,10 +734,10 @@ class EAGGA:
             
             should_stop_early, current_best = self.stop_early(loss_history, current_best, loss_fn, model, dataset_stop_early)
             if should_stop_early:
-                return current_best[1], current_best[0], True
+                return current_best[1], current_best[0], datetime.now() - time_start, True, loss_history
             epoch += 1
         
-        return current_best[1], current_best[0], False
+        return current_best[1], current_best[0], datetime.now() - time_start, False, loss_history
     
 
     def stop_early(self, loss_history: list, current_best: tuple, loss_fn, model: NeuralNetwork, dataset_stop_early: Dataset) -> tuple:
@@ -820,8 +821,13 @@ class EAGGA:
 
             child_1 = deepcopy(parent_1)
             child_2 = deepcopy(parent_2)
+
             del child_1['metrics']
+            del child_1['rank_nds']
+            del child_1['cd']
             del child_2['metrics']
+            del child_2['rank_nds']
+            del child_2['cd']
 
             # EA on hyperparams
             if Prob.should_do(Prob.p_ea_crossover_overall):  # uniform crossover
@@ -890,18 +896,24 @@ class EAGGA:
         offspring = deepcopy(self.offspring)
         for individual in population:
             individual['group_structure'] = individual['group_structure'].to_dict()
+            individual['metrics']['performance']['nf'] = round(individual['metrics']['performance']['nf'], 5)
+            individual['metrics']['performance']['ni'] = round(individual['metrics']['performance']['ni'], 5)
+            individual['metrics']['performance']['nnm'] = round(individual['metrics']['performance']['nnm'], 5)
+            individual['metrics']['performance']['auc'] = [round(auc, 5) for auc in individual['metrics']['performance']['auc']]
+            individual['metrics']['performance']['loss'] = [(round(loss[0], 5), [round(stop_early_loss, 5) for stop_early_loss in loss[1]]) for loss in individual['metrics']['performance']['loss']]  # loss consists of list of tuples (val loss, list(stop early losses over all training epochs))
+            individual['cd'] = round(individual['cd'], 5)
         for individual in offspring:
             individual['group_structure'] = individual['group_structure'].to_dict()
 
         file_content = {
             'population': population,
             'offspring': offspring,
-            'pareto': self.pareto_front
+            'pareto': [[round(metric, 5) for metric in individual] for individual in self.pareto_front.tolist()]
         }
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
 
-        print('Saved population, offspring, pareto front to file')
+        print(f'Saved population + offspring + pareto front of generation {self.gen + 1} to file')
     
 
     def load_population(self, gen):
@@ -911,13 +923,11 @@ class EAGGA:
         self.gen = gen + 1
         self.population = file_content['population']
         self.offspring = file_content['offspring']
-        for individual in self.population:
-            individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
-        for individual in self.offspring:
+        for individual in self.population + self.offspring:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
         self.pareto_front = file_content['pareto']
 
-        print('Loaded population, offspring, pareto front from file, discarded previous population, offspring, pareto front')
+        print(f'Loaded population + offspring + pareto front of generation {gen + 1} from file, discarded previous population + offspring + pareto front')
 
 
     @staticmethod
