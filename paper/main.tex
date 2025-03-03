@@ -49,33 +49,95 @@
 \maketitle
 
 \begin{abstract}%   <- trailing '%' for backward compatibility of .sty file
-\blindtext
+%\blindtext
 \end{abstract}
 
 \begin{keywords}
-  keyword one, keyword two, keyword three
+  tabular data, multi-objective optimization, deep learning
 \end{keywords}
 
 \section{Introduction}
 
-\blindmathpaper
+%\blindmathpaper
 
 
 \section{Background and Related Works}
 
+\subsection{Tabular Data}
+- most common type of data
+- bad performance of deep learning models on tabular data
+
+% feels better in front of AutoML, as it feels more qualitative, less quantitative
+\subsection{Explainable Artificial Intelligence and Interpretability}
+\subsubsection{Why is interpretability desirable?}
+\subsubsection{Practical implementations}
+(1) post-hoc methods
+  - give examples
+  - why are they not perfectly suited
+(2) model-based
+
 \subsection{Automated Machine Learning (AutoML)}
 \subsubsection{Hyperparameter Optimization (HPO)}
+- grid + random search
+- Bayesian optimisation
+  * short intro
+  * why is it unsuitable for our task? (makes no sense to have it here, unless we introduce our problem (feature selection is high-dim binary space) in the introduction)
+- evolutionary algorithm
+  * CMA-ES
+  * NSGA-II
+    - non-dominated sorting
+    - crowding distance
 \subsubsection{Neural Architecture Search (NAS)}
 
-\subsection{Explainable Artificial Intelligence and Interpretability}
-\subsubsection{Why is it desirable?}
-\subsubsection{Practical implementations}
+\subsection{Multi-Objective Optimization}
+- intro
 
 
+%likely shouldn't be an entire section
 \section{EAGGA}
+- NSGA-II inspired evolutionary / genetic algorithm
+- introduces group structure for more efficient optimization over the entire search space
 
 
 \section{Extension to neural networks}
+- why extend it to NNs?
+  * NNs notoriously uninterpretable due to complex transformation of the feature space
+  * due to (lin alg) non-linear activation functions, interactions can be modelled
+  * no monotonicity guarantees
+- our approach
+  * feature sparsity: straightforward, only train model on selected features, goes somewhat against idea of deep learning,
+    where the model is supposed to decide on its own, which features to put importance on -> WHY?
+  * feature interaction
+    - create non-fully connected network by introducing network-groups based on the equivalence relations introduced in the EAGGA paper
+    - show formula why the interacting features need to be grouped together when using ReLU (cf. photos)
+  * monotonicity constraints
+    - for groups with contraint on monotonicity: clip weights to [0, infty), bias clipping not necessary
+    - show formula of how monotonicity is enforced with this
+  * changes (-) + similarities (+) to EAGGA paper (~ in-between)
+    + 2/3 holdout outer split for 'CV'- vs test-set
+    - train + eval each individual via 5-fold CV with 20\% of train set again reserved to determine early stopping -> best to visualise,
+      * early stopping necessary (as opposed to XGB) as NN can be trained forever, whereas tree implementations used by EAGGA paper have
+        max depth, etc.
+      * early stopping using min-epochs 200, patience 100, i.e. train for $\ge$ 200 epochs, always safe model with lowest loss, whenever
+        current loss > mean(losses of last 100 (patience) epochs), stop early + return model with lowest loss
+    ~ if no early stopping, train each fold (in 5-fold CV) for max 120 secs, do entire EAGGA loop per dataset for max 8 hrs
+    ~ training on Sagemaker Notebook instance
+      * initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
+      using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
+      * thus decided for more economic + ressourcenschonend t3.medium
+    - evaluation
+      * AUC + NF: straightforward
+      * NI: for each group with $\ge$ 2 features: sum from 1 to (\# features - 1), i.e ${\# features \choose 2}$,
+        then sum over all groups like this, then divide by p(p-1)/2, i.e. ${p \choose 2}$
+      * NNM: \# unconstrained features / \# all features
+    ~ feature + interaction detector: examination of decision trees not super straightforward in sklearn, hence simply use p=0.5
+    ? interaction detector (FAST)
+      * train logistic model on 80\% of data (only holdout train portion or all ??), evaluate on 20
+      * use mean accuracy (logistic metric) instead of RSS (LM metric)
+    + monotonicity detector as in paper, also use dec tree HPs from mlr3
+    ~ encoding of group structures similar, each feature will get its individual monotonicity sign from the detector, this is then fed to the dataset,
+      which then outputs the data according multiplied with the sign
+
 
 
 \section{Experimental Results and Discussion}
