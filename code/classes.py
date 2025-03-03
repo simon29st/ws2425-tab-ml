@@ -464,8 +464,10 @@ class GroupStructure:
 
 class Prob:
     p_sample_hps = 0.5
+    
     gamma_shape = 2
-    gamma_scale = 0.2
+    gamma_scale = 0.15
+    
     p_sample_features_selected = 0.5  # original paper uses relative # of features used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
     p_sample_interactions = 0.5  # original paper uses relative # of pairwise interactions used across 10 decision trees, no straightforward to retrieve this from sklearn, for our NN implementation just use 0.5
 
@@ -494,7 +496,7 @@ class Prob:
     
 
     @staticmethod
-    def r_trunc_gamma(shape: float, scale: float, samples: int, val_max: int = 1):
+    def r_trunc_gamma(shape: float, scale: float, samples: int, val_max: int = 1, decimals: int = 1):
         draws_trunc_gamma = np.random.gamma(shape=shape, scale=scale, size=samples)
 
         idx = np.argwhere(draws_trunc_gamma > val_max)
@@ -502,15 +504,15 @@ class Prob:
             draws_trunc_gamma[idx] = np.random.gamma(shape=shape, scale=scale, size=samples)[idx]
             idx = np.argwhere(draws_trunc_gamma > val_max)
 
-        return np.round(draws_trunc_gamma, 2)
+        return np.round(draws_trunc_gamma, decimals)
     
 
     @staticmethod
-    def ea_mutate_gaussian(val, lower, upper):
+    def ea_mutate_gaussian(val, lower, upper, decimals: int = 1):
         val = (val - lower) / (upper - lower)
         val = np.random.normal(loc=val, scale=0.1, size=1).item()
         val = (val * (upper - lower)) + lower
-        return min(max(val, lower), upper)
+        return round(min(max(val, lower), upper), decimals)
             
 
     @staticmethod
@@ -581,7 +583,7 @@ class EAGGA:
         print('Starting init population')
         population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['total_layers'][0], self.hps['total_layers'][1])
         population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
-        population_p_dropout = Prob.r_trunc_gamma(Prob.gamma_shape, Prob.gamma_scale, self.hps['mu'], 1)
+        population_p_dropout = Prob.r_trunc_gamma(Prob.gamma_shape, Prob.gamma_scale, self.hps['mu'], 1, 1)
 
         all_features = list(i for i in range(len(self.data_train_val.columns) - 1))
         population_features_included = [GroupStructure.detector_features(self.data_train_val, self.categorical_indicator, self.class_column) for _ in range(self.hps['mu'])]
@@ -873,10 +875,10 @@ class EAGGA:
             for child in [child_1, child_2]:  # Gaussian mutation
                 if Prob.should_do(Prob.p_ea_mutate_overall):
                     if Prob.should_do(Prob.p_ea_mutate_param):
-                        child['total_layers'] = Prob.ea_mutate_gaussian(child['total_layers'], self.hps['total_layers'][0], self.hps['total_layers'][1])
+                        child['total_layers'] = Prob.ea_mutate_gaussian(child['total_layers'], self.hps['total_layers'][0], self.hps['total_layers'][1], 0)
                         child['total_layers'] = round(child['total_layers'])
                     if Prob.should_do(Prob.p_ea_mutate_param):
-                        child['nodes_per_hidden_layer'] = Prob.ea_mutate_gaussian(child['nodes_per_hidden_layer'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
+                        child['nodes_per_hidden_layer'] = Prob.ea_mutate_gaussian(child['nodes_per_hidden_layer'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1], 0)
                         child['nodes_per_hidden_layer'] = round(child['nodes_per_hidden_layer'])
                     if Prob.should_do(Prob.p_ea_mutate_param):
                         child['p_dropout'] = Prob.ea_mutate_gaussian(child['p_dropout'], 0, 1)
