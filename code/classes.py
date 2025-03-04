@@ -556,7 +556,7 @@ class EAGGA:
         majority_class_fraction = self.data_train_val.loc[self.data_train_val.loc[:, self.class_column] == majority_class, :].shape[0] / self.data_train_val.shape[0]
         self.performance_majority_predictor = (majority_class_fraction, 0, 0, 0)
         self.nds = NonDominatedSorting()
-        self.hv = HV(ref_point=(1, 1, 1, 1), nds=False)  # set ref-pt to (1, 1, 1, 1), as pymoo always minimises, i.e. ref-pt (0, 1, 1, 1) would consider 0 to be largest value in first dim + result in hypervolume = 0, instead transform first dim of points so that auc becomes minimisation problem (via 1 - auc)
+        self.hv_obj = HV(ref_point=(1, 1, 1, 1), nds=False)  # set ref-pt to (1, 1, 1, 1), as pymoo always minimises, i.e. ref-pt (0, 1, 1, 1) would consider 0 to be largest value in first dim + result in hypervolume = 0, instead transform first dim of points so that auc becomes minimisation problem (via 1 - auc)
 
         # inner split, k-fold cross validation
         self.cv = StratifiedKFold(
@@ -642,7 +642,8 @@ class EAGGA:
             
             pareto_front_idx = fronts[0]
             self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
-            print(f'Dominated Hypervolume: {self.hv(metrics_nds_np[pareto_front_idx])} for Pareto front {self.pareto_front}')
+            self.dhv = self.hv_obj(metrics_nds_np[pareto_front_idx])
+            print(f'Dominated Hypervolume: {self.dhv} for Pareto front {self.pareto_front}')
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
@@ -941,11 +942,12 @@ class EAGGA:
             individual['cd'] = round(individual['cd'], 5)
         for individual in offspring:
             individual['group_structure'] = individual['group_structure'].to_dict()
-
+        
         file_content = {
             'population': population,
             'offspring': offspring,
-            'pareto': [[round(metric, 5) for metric in individual] for individual in self.pareto_front.tolist()]
+            'pareto': [[round(metric, 5) for metric in individual] for individual in self.pareto_front.tolist()],
+            'dhv': round(self.dhv, 5)
         }
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
