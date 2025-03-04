@@ -24,6 +24,14 @@ from datetime import datetime, timedelta
 import os
 from pathlib import Path
 import json
+import logging
+
+
+logging.basicConfig(filename=os.path.join('export', 'log.txt'),
+    filemode='a',
+    format='%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    level=logging.INFO)
 
 
 class NeuralNetwork(nn.Module):
@@ -535,7 +543,9 @@ class EAGGA:
         self.class_positive = class_positive
 
         if self.data.isnull().values.any():  # from manual checks: dataset 'jm1' has NaN values in 5 rows -> simply remove
-            print(f'Drop {self.data.loc[self.data.isnull().any(axis=1), :].shape[0]} NaN values of dataset {oml_dataset.name}')
+            msg = f'Drop {self.data.loc[self.data.isnull().any(axis=1), :].shape[0]} NaN values of dataset {oml_dataset.name}'
+            logging.info(msg)
+            print(msg)
             self.data = self.data.dropna(axis=0, how='any')
             self.data = self.data.reset_index(drop=True)
         
@@ -580,7 +590,9 @@ class EAGGA:
 
 
     def init_population(self):
-        print('Starting init population')
+        msg = 'Starting init population'
+        logging.info(msg)
+        print(msg)
         population_layers = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['total_layers'][0], self.hps['total_layers'][1])
         population_nodes = Prob.r_trunc_geom(Prob.p_sample_hps, self.hps['mu'], self.hps['nodes_per_hidden_layer'][0], self.hps['nodes_per_hidden_layer'][1])
         population_p_dropout = Prob.r_trunc_gamma(Prob.gamma_shape, Prob.gamma_scale, self.hps['mu'], 1, 1)
@@ -590,7 +602,9 @@ class EAGGA:
         population_features_excluded = [list(set(all_features) - set(features_included)) for features_included in population_features_included]
         population_interactions = [GroupStructure.detector_interactions(self.data_train_val, features_included, self.class_column) for features_included in population_features_included]
         population_monotonicity_constraints = [GroupStructure.detector_monotonicity(self.data_train_val, groups_without_monotonicity, self.class_column) for groups_without_monotonicity in population_interactions]
-        print('Finished init population')
+        msg = 'Finished init population'
+        logging.info(msg)
+        print(msg)
 
         return [{
             'total_layers': population_layers[i].item(),
@@ -608,13 +622,19 @@ class EAGGA:
     # returns Pareto front
     def run_eagga(self):
         time_start = datetime.now()
-        print(f'Start EAGGA at {time_start.isoformat()}')
+        msg = f'Start EAGGA at {time_start.isoformat()}'
+        logging.info(msg)
+        print(msg)
 
         while(datetime.now() < time_start + timedelta(seconds=self.secs_total)):
-            print(f'Generation {self.gen+1}, evaluate {len(self.offspring)} individuals')
+            msg = f'Generation {self.gen+1}, evaluate {len(self.offspring)} individuals'
+            logging.info(msg)
+            print(msg)
 
             for i, individual in enumerate(self.offspring):
-                print(f'Running {self.hps["cv_k"]}-fold CV for individual {i+1}/{len(self.offspring)}: {individual["total_layers"]} total layers, {individual["nodes_per_hidden_layer"]} nodes per hidden layer, dropout p {individual["p_dropout"]}, gs: {individual["group_structure"]}')
+                msg = f'Running {self.hps["cv_k"]}-fold CV for individual {i+1}/{len(self.offspring)}: {individual["total_layers"]} total layers, {individual["nodes_per_hidden_layer"]} nodes per hidden layer, dropout p {individual["p_dropout"]}, gs: {individual["group_structure"]}'
+                logging.info(msg)
+                print(msg)
                 individual['metrics'] = self.run_cv(individual)
                 self.population.append(individual)
 
@@ -643,7 +663,9 @@ class EAGGA:
             pareto_front_idx = fronts[0]
             self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
             self.dhv = self.hv_obj(metrics_nds_np[pareto_front_idx])
-            print(f'Dominated Hypervolume: {self.dhv} for Pareto front {self.pareto_front}')
+            msg = f'Dominated Hypervolume: {self.dhv} for Pareto front {self.pareto_front}'
+            logging.info(msg)
+            print(msg)
 
             if datetime.now() >= time_start + timedelta(seconds=self.secs_total):
                 self.offspring = list()  # re-set offspring so in case of json export the same individuals won't be saved as part of offspring (without metrics) and population (with metrics)
@@ -653,8 +675,10 @@ class EAGGA:
             self.offspring = self.generate_offspring()
             self.autosave()
 
-            self.gen += 1 
-        print(f'Finished EAGGA at {datetime.now().isoformat()}')
+            self.gen += 1
+        msg = f'Finished EAGGA at {datetime.now().isoformat()}'
+        logging.info(msg)
+        print(msg)
 
         return self.pareto_front
 
@@ -718,7 +742,9 @@ class EAGGA:
 
             metrics['performance'].append(self.eval(loss_fn, model, dataset_val))
             # print prior to adding losses_stop_early to avoid long + rather uninformative output of loss history, only intended to be used for plotting
-            print(f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs / {round(stop_secs.total_seconds(), 3)} seconds | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}')
+            msg = f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs / {round(stop_secs.total_seconds(), 3)} seconds | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}'
+            logging.info(msg)
+            print(msg)
             metrics['performance'][-1]['losses_stop_early'] = losses_stop_early
             metrics['epochs'].append(stop_epoch)
 
@@ -924,7 +950,9 @@ class EAGGA:
             file_path = EAGGA.create_file_path(self.file_path)
             Path(file_path).mkdir(parents=True, exist_ok=True)
 
-            print(f'Autosaving generation {self.gen + 1} to {file_path}')
+            msg = f'Autosaving generation {self.gen + 1} to {file_path}'
+            logging.info(msg)
+            print(msg)
 
             self.save_population()
     
@@ -952,7 +980,9 @@ class EAGGA:
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
 
-        print(f'Saved population + offspring + pareto front of generation {self.gen + 1} to file')
+        msg = f'Saved population + offspring + pareto front of generation {self.gen + 1} to file'
+        logging.info(msg)
+        print(msg)
     
 
     def load_population(self, gen):
@@ -966,7 +996,9 @@ class EAGGA:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
         self.pareto_front = file_content['pareto']
 
-        print(f'Loaded population + offspring + pareto front of generation {gen + 1} from file, discarded previous population + offspring + pareto front')
+        msg = f'Loaded population + offspring + pareto front of generation {gen + 1} from file, discarded previous population + offspring + pareto front'
+        logging.info(msg)
+        print(msg)
 
 
     @staticmethod
