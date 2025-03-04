@@ -535,6 +535,10 @@ class Prob:
 
 class EAGGA:
     def __init__(self, oml_dataset, class_positive, hps: dict[str, tuple | int | float], batch_size: int, min_epochs: int, patience: int, secs_per_fold: int, secs_total: int, file_path: str = None):
+        msg = f'Dataset {oml_dataset.name}'
+        logging.info(msg)
+        print(msg)
+        
         self.device_cpu = torch.device('cpu')
         self.device_cuda = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
