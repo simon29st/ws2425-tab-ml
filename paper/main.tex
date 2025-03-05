@@ -57,15 +57,27 @@
 \end{keywords}
 
 \section{Introduction}
+Tabular Data
+- most common type of data
+- bad performance of deep learning models on tabular data, recent research suggests that heavy regularisation is necessary
+
+regularisation
+- LM: ridge (L2) + lasso (L1)
+  * ridge: overcome multi-collinearity by pulling coeffs close to 0
+  * lasso: variable selection by setting coeffs = 0
+- NN:
+  * L2 regularisation implicitly included in SGD when using weight decay (pull params towards 0) -> does this combat multi-collinearity as well or serve another purpose?
+  * L1
+    + key claim of DL: feature selection obsolete, network finds important ones itself
+    + still, feature usually always has some impact (back this up), no explicit feature selection
+    + explicit feature selection simply by not inluding a feature
+  * another classical NN regularisation technique: dropout against co-adaptation
+  * early stopping
 
 %\blindmathpaper
 
 
 \section{Background and Related Works}
-
-\subsection{Tabular Data}
-- most common type of data
-- bad performance of deep learning models on tabular data
 
 % feels better in front of AutoML, as it feels more qualitative, less quantitative
 \subsection{Explainable Artificial Intelligence and Interpretability}
@@ -80,17 +92,24 @@
 \subsubsection{Hyperparameter Optimization (HPO)}
 - grid + random search
 - Bayesian optimisation
-  * short intro
-  * why is it unsuitable for our task? (makes no sense to have it here, unless we introduce our problem (feature selection is high-dim binary space) in the introduction)
-- evolutionary algorithm
+-> both unsuitable for our task
+  + would be ok for weight decay (L2) + dropout optim
+  + but: approaches for feature selection (L1) not feasible
+    (a) 0-1 penalty on included features added to loss, problems:
+      - how to choose regularisation parameter?
+      - not all features equally important -> weighted 0-1 loss? how to choose weights?
+    (b) directly optimise over binary hpyercube -> how to optim over non-ordinal discrete space?
+-> evolutionary algorithms can be a solution for these types of problems
   * CMA-ES
   * NSGA-II
     - non-dominated sorting
     - crowding distance
 \subsubsection{Neural Architecture Search (NAS)}
+not sure if super relevant as I don't use a specific NAS technology (e.g. one-shot, etc.) but simply optimise over \# layers + \# nodes as HPs
 
 \subsection{Multi-Objective Optimization}
-- intro
+- problem: all aforementioned approaches are a-priori approaches -> we choose best HPs (weight decay, features used, dropout) w.r.t. performance
+- intro MOO
 
 
 %likely shouldn't be an entire section
