@@ -748,7 +748,7 @@ class EAGGA:
             # print prior to adding losses_stop_early to avoid long + rather uninformative output of loss history, only intended to be used for plotting
             msg = f'Fold {fold + 1}/{self.cv.get_n_splits()} | trained for {stop_epoch + 1} epochs / {round(stop_secs.total_seconds(), 3)} seconds | stopped early: {stopped_early} | metrics: {metrics["performance"][-1]}'
             logging.info(msg)
-            print(msg)
+            #print(msg)
             metrics['performance'][-1]['losses_stop_early'] = losses_stop_early
             metrics['epochs'].append(stop_epoch)
 
