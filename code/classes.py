@@ -622,9 +622,9 @@ class EAGGA:
 
 
     # returns Pareto front
-    def run_eagga(self):
+    def run_eagga(self) -> tuple:
         time_start = datetime.now()
-        msg = f'Start EAGGA at {time_start.isoformat()}'
+        msg = f'Start EAGGA Training at {time_start.isoformat()}'
         logging.info(msg)
         print(msg)
 
@@ -657,15 +657,17 @@ class EAGGA:
             fronts, ranks_nds = self.nds.do(metrics_nds_np, return_rank=True)
             cds = calc_crowding_distance(np.array(metrics))
 
+            pareto_front_idx = fronts[0]
+            self.pareto_set = [individual for i, individual in enumerate(self.population) if i in pareto_front_idx]
+
             for i in range(len(self.population)):  # majority class predictor would be at ranks_nds[len(self.population)] -> no impact here, as intended (iter from 0 to len(self.population) - 1)
                 self.population[i]['rank_nds'] = ranks_nds[i].item()
                 self.population[i]['cd'] = cds[i].item()
             self.population = sorted(self.population, key=lambda individual: (individual['rank_nds'], -individual['cd']))[:self.hps['mu']]  # ascending order of front ranks (lower is better), descending order of crowding distance for tied ranks (larger is more important for front), choose best mu individuals
-            
-            pareto_front_idx = fronts[0]
-            self.pareto_front = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
-            self.dhv = self.hv_obj(metrics_nds_np[pareto_front_idx])
-            msg = f'Dominated Hypervolume: {self.dhv} for Pareto front {self.pareto_front}'
+
+            self.pareto_front_val = np.subtract(metrics_nds_np[pareto_front_idx], (1, 0, 0, 0)) * (-1, 1, 1, 1)  # ensure that Pareto front format is (AUC, NF, NI, NNM) instead of (-AUC, NF, NI, NNM), which we have in metrics_nds_np
+            self.dhv_val = self.hv_obj(metrics_nds_np[pareto_front_idx])
+            msg = f'Dominated Hypervolume (val): {self.dhv_val} for Pareto front (val) {self.pareto_front_val}'
             logging.info(msg)
             print(msg)
 
@@ -678,11 +680,75 @@ class EAGGA:
             self.autosave()
 
             self.gen += 1
-        msg = f'Finished EAGGA at {datetime.now().isoformat()}'
+        msg = f'Finished EAGGA Training at {datetime.now().isoformat()}'
         logging.info(msg)
         print(msg)
 
-        return self.pareto_front
+        # -----
+
+        msg = f'Start EAGGA Final (test) Evaluation at {datetime.now().isoformat()}'
+        logging.info(msg)
+        print(msg)
+
+        self.pareto_front_test = list()
+        for individual in self.pareto_set:
+            model = NeuralNetwork(
+                group_structure=individual['group_structure'],
+                output_size=1,  # we only use binary datasets
+                total_layers=individual['total_layers'],
+                nodes_per_hidden_layer=individual['nodes_per_hidden_layer'],
+                p_dropout=individual['p_dropout']
+            ).to(self.device_cuda)
+
+            optimizer = torch.optim.AdamW(model.parameters())
+            loss_fn = nn.BCEWithLogitsLoss()
+
+            dataset_train = Dataset(
+                X=self.data_train_val.loc[:, self.data_train_val.columns != self.class_column],
+                y=self.data_train_val.loc[:, self.class_column],
+                class_pos=self.class_positive,
+                group_structure=individual['group_structure'],
+                device=self.device_cuda
+            )
+            dataset_test = Dataset(
+                X=self.data_test.loc[:, self.data_test.columns != self.class_column],
+                y=self.data_test.loc[:, self.class_column],
+                class_pos=self.class_positive,
+                group_structure=individual['group_structure'],
+                device=self.device_cuda
+            )
+
+            model, _, _, _, _ = self.train(
+                optimizer=optimizer,
+                loss_fn=loss_fn,
+                model=model,
+                dataset_train=dataset_train,
+                dataset_stop_early=None,
+                with_stop_early=False,
+                stop_after_epochs=max(individual['metrics']['epochs'])
+            )
+
+            performance = self.eval(
+                loss_fn=loss_fn,
+                model=model,
+                dataset_eval=dataset_test,
+                only_loss=False
+            )
+
+            self.pareto_front_test.append((performance['auc'].item(), performance['nf'], performance['ni'], performance['nnm']))
+        self.pareto_front_test += [self.performance_majority_predictor]
+        print(self.pareto_front_test)
+
+        metrics_dhv = [(1 - performance[0], *performance[1:]) for performance in self.pareto_front_test]
+        self.dhv_test = self.hv_obj(np.array(metrics_dhv))
+
+        self.save_pareto()
+            
+        msg = f'Finished EAGGA Final (test) Evaluation at {datetime.now().isoformat()}'
+        logging.info(msg)
+        print(msg)
+
+        return self.pareto_set, self.pareto_front_val, self.pareto_front_test, self.dhv_val.item(), self.dhv_test.item()
 
 
     # runs k-fold cv training with stopping early
@@ -757,6 +823,7 @@ class EAGGA:
                 'ni': metrics['performance'][0]['ni'],
                 'nnm': metrics['performance'][0]['nnm'],
                 'auc': [performance['auc'] for performance in metrics['performance']],
+                #         validation set loss |    stop early loss history
                 'loss': [(performance['loss'], performance['losses_stop_early']) for performance in metrics['performance']],
             },
             'epochs': metrics['epochs']
@@ -765,14 +832,15 @@ class EAGGA:
 
     # does one training fold
     # cf. https://pytorch.org/tutorials/beginner/introyt/trainingyt.html
-    def train(self, optimizer, loss_fn, model: NeuralNetwork, dataset_train: Dataset, dataset_stop_early: Dataset) -> tuple:
+    def train(self, optimizer, loss_fn, model: NeuralNetwork, dataset_train: Dataset, dataset_stop_early: Dataset, with_stop_early: bool = True, stop_after_epochs: int = None) -> tuple:
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True)
 
         epoch = 0
         loss_history = list()
         current_best = (0, model)  # (epoch, model at epoch)
         time_start = datetime.now()
-        while(datetime.now() < time_start + timedelta(seconds=self.secs_per_fold)):
+        run_loop = True
+        while(run_loop):
             model.train()  # training mode, put here as we switch to eval mode at the end of each epoch in def stop_early
             running_epoch_loss = 0
 
@@ -793,10 +861,17 @@ class EAGGA:
                     if monotonicity_constraint == 1:
                         model.networks[i].apply(self.monotonicity_clipper)  # applies weight clipper recursively to network + its children, cf. https://pytorch.org/docs/stable/generated/torch.nn.Module.html#torch.nn.Module.apply
             
-            should_stop_early, current_best = self.stop_early(loss_history, current_best, loss_fn, model, dataset_stop_early)
-            if should_stop_early:
-                return current_best[1], current_best[0], datetime.now() - time_start, True, loss_history
+            if with_stop_early:
+                should_stop_early, current_best = self.stop_early(loss_history, current_best, loss_fn, model, dataset_stop_early)
+                if should_stop_early:
+                    return current_best[1], current_best[0], datetime.now() - time_start, True, loss_history
+            
             epoch += 1
+            
+            if stop_after_epochs is None and datetime.now() > time_start + timedelta(seconds=self.secs_per_fold):
+                run_loop = False
+            elif stop_after_epochs is not None and stop_after_epochs <= epoch:
+                run_loop = False
         
         return current_best[1], current_best[0], datetime.now() - time_start, False, loss_history
     
@@ -962,6 +1037,7 @@ class EAGGA:
     def save_population(self):
         population = deepcopy(self.population)
         offspring = deepcopy(self.offspring)
+        pareto_set = deepcopy(self.pareto_set)
         for individual in population:
             individual['group_structure'] = individual['group_structure'].to_dict()
             individual['metrics']['performance']['nf'] = round(individual['metrics']['performance']['nf'], 5)
@@ -970,19 +1046,23 @@ class EAGGA:
             individual['metrics']['performance']['auc'] = [round(auc, 5) for auc in individual['metrics']['performance']['auc']]
             individual['metrics']['performance']['loss'] = [(round(loss[0], 5), [round(stop_early_loss, 5) for stop_early_loss in loss[1]]) for loss in individual['metrics']['performance']['loss']]  # loss consists of list of tuples (val loss, list(stop early losses over all training epochs))
             individual['cd'] = round(individual['cd'], 5)
-        for individual in offspring:
+        for individual in offspring + pareto_set:
             individual['group_structure'] = individual['group_structure'].to_dict()
         
         file_content = {
             'population': population,
             'offspring': offspring,
-            'pareto': [[round(metric, 5) for metric in individual] for individual in self.pareto_front.tolist()],
-            'dhv': round(self.dhv, 5)
+            'pareto': {
+                'set': pareto_set,
+                'front_val': [[round(metric, 5) for metric in individual] for individual in self.pareto_front_val.tolist()]
+            },
+            'dhv_val': round(self.dhv_val, 5)
         }
+
         with open(EAGGA.create_file_path(os.path.join(self.file_path, f'gen-{self.gen}.json')), 'w') as f:
             json.dump(file_content, f)
 
-        msg = f'Saved population + offspring + pareto front of generation {self.gen + 1} to file'
+        msg = f'Saved population + offspring + pareto set + front of generation {self.gen + 1} to file'
         logging.info(msg)
         print(msg)
     
@@ -994,13 +1074,32 @@ class EAGGA:
         self.gen = gen + 1
         self.population = file_content['population']
         self.offspring = file_content['offspring']
-        for individual in self.population + self.offspring:
+        self.pareto_set = file_content['pareto']['set']
+        for individual in self.population + self.offspring + self.pareto_set:
             individual['group_structure'] = GroupStructure.from_dict(individual['group_structure'])
-        self.pareto_front = file_content['pareto']
+        self.pareto_front_val = file_content['pareto']['front_val']
+        self.dhv_val = file_content['dhv_val']
 
-        msg = f'Loaded population + offspring + pareto front of generation {gen + 1} from file, discarded previous population + offspring + pareto front'
+        msg = f'Loaded population + offspring + pareto set + front of generation {gen + 1} from file, discarded previous population + offspring + pareto front'
         logging.info(msg)
         print(msg)
+    
+    
+    def save_pareto(self):
+        pareto_set = deepcopy(self.pareto_set)
+        for individual in pareto_set:
+            individual['group_structure'] = individual['group_structure'].to_dict()
+
+        file_content = {
+            'set': pareto_set,
+            'front_val': [[round(metric, 5) for metric in individual] for individual in self.pareto_front_val.tolist()],
+            'front_test': [[round(metric, 5) for metric in individual] for individual in self.pareto_front_test],
+            'dhv_val': round(self.dhv_val, 5),
+            'dhv_test': round(self.dhv_test, 5)
+        }
+
+        with open(EAGGA.create_file_path(os.path.join(self.file_path, f'pareto.json')), 'w') as f:
+            json.dump(file_content, f)
 
 
     @staticmethod
