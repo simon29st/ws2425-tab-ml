@@ -566,9 +566,7 @@ class EAGGA:
         self.data_train_val = self.data_train_val.reset_index(drop=True)
         self.data_test = self.data_test.reset_index(drop=True)
 
-        majority_class = self.data_train_val.loc[:, self.class_column].mode().item()
-        majority_class_fraction = self.data_train_val.loc[self.data_train_val.loc[:, self.class_column] == majority_class, :].shape[0] / self.data_train_val.shape[0]
-        self.performance_majority_predictor = (majority_class_fraction, 0, 0, 0)
+        self.performance_majority_predictor = (0.5, 0, 0, 0)
         self.nds = NonDominatedSorting()
         self.hv_obj = HV(ref_point=(1, 1, 1, 1), nds=False)  # set ref-pt to (1, 1, 1, 1), as pymoo always minimises, i.e. ref-pt (0, 1, 1, 1) would consider 0 to be largest value in first dim + result in hypervolume = 0, instead transform first dim of points so that auc becomes minimisation problem (via 1 - auc)
 
