@@ -72,7 +72,7 @@ regularisation
     + still, feature usually always has some impact (back this up), no explicit feature selection
     + explicit feature selection simply by not inluding a feature
   * another classical NN regularisation technique: dropout against co-adaptation
-  * early stopping
+  * early stopping against overfitting when using iterative method
 
 %\blindmathpaper
 
@@ -124,6 +124,33 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
   * due to (lin alg) non-linear activation functions, interactions can be modelled
   * no monotonicity guarantees
 - our approach
+  (general algorithm)
+  * EAGGA algorithm implemented just as described in the paper
+  * group structure init
+    - feature detector
+      * as described in paper
+      * but instead of fitting 10 trees + taking rel. \# of features used as p for trunc geom, we simply use 0.5 (sklearn dectree analysis a bit tricky)
+      * also in preliminary experiments we found the sampled \# of features to be used occassionally to be > \# of non-0 values in normalised information gain filter
+        (e.g. if former is = total \# of features and one feature is indep. from target) in these edge cases we only use the features with non-0 filter values
+    - interaction detector
+      * as described in paper
+      * same as feat detect, use p=0.5 to sample \# of interactions used instead of 10 dec trees
+      * also for FAST algorithm don't use RSS (lin reg metric) but mean accuracy, as we fit log reg
+    - monotonicity detector
+      * as described in paper
+      * use default HPs (max depth 30, minsplie = 20) of mlr3 classification tree implementation, as this is the library the paper uses
+    -> both interaction + monotonicity detectors fit their models on 80\% of train split from holdout + eval on remaining 20\%
+  (implementation details)
+  * group structures + datasets
+  * neural network
+    - "instead of XGB we use NN, ..., this requires special architecture, etc. pp."
+  * holdout, cv, early stopping
+
+
+
+
+  
+  (old notes, use in new)
   * feature sparsity: straightforward, only train model on selected features, goes somewhat against idea of deep learning,
     where the model is supposed to decide on its own, which features to put importance on -> WHY?
   * feature interaction
@@ -156,7 +183,6 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
     + monotonicity detector as in paper, also use dec tree HPs from mlr3
     ~ encoding of group structures similar, each feature will get its individual monotonicity sign from the detector, this is then fed to the dataset,
       which then outputs the data according multiplied with the sign
-
 
 
 \section{Experimental Results and Discussion}
