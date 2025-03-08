@@ -35,12 +35,12 @@
 
 % Short headings should be running head and authors last names
 
-\ShortHeadings{Extending EAGGA to Neural Networks}{Simon Stürzebecher}
+\ShortHeadings{Interpretable Neural Networks using EAGGA}{Simon Stürzebecher}
 \firstpageno{1}
 
 \begin{document}
 
-\title{Extending EAGGA to Neural Networks}
+\title{Interpretable Neural Networks using EAGGA}
 
 \author{\name Simon Stürzebecher \email simon.stuerzebecher@campus.lmu.de}
 
@@ -80,16 +80,15 @@ regularisation
 \section{Background and Related Works}
 
 % feels better in front of AutoML, as it feels more qualitative, less quantitative
-\subsection{Explainable Artificial Intelligence and Interpretability}
-\subsubsection{Why is interpretability desirable?}
-\subsubsection{Practical implementations}
-(1) post-hoc methods
-  - give examples
-  - why are they not perfectly suited
-(2) model-based
+\subsection{Interpretability}
+- Why Interpretability is desirable?
+- Practical implementations
+  (1) post-hoc methods
+    - give examples
+    - why are they not perfectly suited
+  (2) model-based
 
-\subsection{Automated Machine Learning (AutoML)}
-\subsubsection{Hyperparameter Optimization (HPO)}
+\subsection{Hyperparameter Optimization (HPO)}
 - grid + random search
 - Bayesian optimisation
 -> both unsuitable for our task
@@ -105,12 +104,14 @@ regularisation
     - non-dominated sorting
     - crowding distance
     -> give intuition why non-dom-sort (asc) + crowding dist (desc) makes sense for selecting individuals
-\subsubsection{Neural Architecture Search (NAS)}
+\subsection{Neural Architecture Search (NAS)}
 not sure if super relevant as I don't use a specific NAS technology (e.g. one-shot, etc.) but simply optimise over \# layers + \# nodes as HPs
 
 \subsection{Multi-Objective Optimization}
 - problem: all aforementioned approaches are a-priori approaches -> we choose best HPs (weight decay, features used, dropout) w.r.t. performance
 - intro MOO
+\subsubsection{Scalarisation}
+\subsubsection{Pareto-optimality}
 
 
 %likely shouldn't be an entire section
@@ -175,9 +176,9 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
     - inner CV split on outer train portion: 5-fold (as in paper)
       * in each fold fit model on 80\% of CV-train portion, use remaining 20\% of CV-train for early stopping
     - early stopping criterion
-      * always train for min 200 epochs, keep track of model with lowest loss
+      * for each fold, always train for min 200 epochs, keep track of model with lowest loss
       * after that, use patience of 100: if current model's loss is > mean of last 100 epochs' losses
-      * if no early stopping, train each model for max 10 minutes
+      * if no early stopping, train each fold for max 10 minutes
       * then stop training, return model with lowest loss
     -> add graphic of entire dataset split
     - then evaluate on last fold from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
@@ -185,6 +186,10 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
     - initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
     using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
     - thus decided for more economic + ressourcen-schonend t3.medium
+  * known bugs
+    - in rare cases (anecdotally every ~2 datasets), gga\_mutate seems to be generating -1 as monotonicity attribute, despite np.random.randint(low=0, high=2, size=1)
+      * loop crashes at group\_structure creation, for these cases subtract previous runtime from 8hrs + load from last generation in output via load\_population
+      * so far only happened for madeline in after gen-8.json after 5hrs 45mins (at start of gen-9, which wasn't exported yet) -> loaded this and ran for another 2hrs 15mins
 
 
 \section{Experimental Results and Discussion}
