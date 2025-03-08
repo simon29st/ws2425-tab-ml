@@ -104,6 +104,7 @@ regularisation
   * NSGA-II
     - non-dominated sorting
     - crowding distance
+    -> give intuition why non-dom-sort (asc) + crowding dist (desc) makes sense for selecting individuals
 \subsubsection{Neural Architecture Search (NAS)}
 not sure if super relevant as I don't use a specific NAS technology (e.g. one-shot, etc.) but simply optimise over \# layers + \# nodes as HPs
 
@@ -126,15 +127,19 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
 - our approach
   (general algorithm)
   * EAGGA algorithm implemented just as described in the paper
+  * HP init
+    - NN total layers $\in\{3, ..., 10\}$, i.e. hidden layers $\in\{1, ..., 8\}$, init from trunc geom with p=0.5
+    - NN nodes per hidden layer (for each group) $\in\{3, ..., 20\}$, init from trunc geom with p=0.5
+    - NN dropout \% $\in[0, 1]$, init from trunc gamma with shape=2, scale=0.15
   * group structure init
     - feature detector
       * as described in paper
-      * but instead of fitting 10 trees + taking rel. \# of features used as p for trunc geom, we simply use 0.5 (sklearn dectree analysis a bit tricky)
+      * but instead of fitting 10 trees + taking rel. \# of features used as p for trunc geom, we simply use 0.5 (sklearn dectree examination not straightforward)
       * also in preliminary experiments we found the sampled \# of features to be used occassionally to be > \# of non-0 values in normalised information gain filter
         (e.g. if former is = total \# of features and one feature is indep. from target) in these edge cases we only use the features with non-0 filter values
     - interaction detector
       * as described in paper
-      * same as feat detect, use p=0.5 to sample \# of interactions used instead of 10 dec trees
+      * same as for feat detect: use p=0.5 to sample \# of interactions used instead of 10 dec trees
       * also for FAST algorithm don't use RSS (lin reg metric) but mean accuracy, as we fit log reg
     - monotonicity detector
       * as described in paper
@@ -142,47 +147,44 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
     -> both interaction + monotonicity detectors fit their models on 80\% of train split from holdout + eval on remaining 20\%
   (implementation details)
   * group structures + datasets
+    - group structures implemented as described in the paper with additional list encoding sign of monotonicity of the individual features as detected by the
+      monotonicity detector
+    - included features are passed to dataset, dataset outputs included features, multiplied by the features' individual monotonicity (-1 / 1)
+    - entire group structure is passed to NN, where architecture is built accordingly
   * neural network
-    - "instead of XGB we use NN, ..., this requires special architecture, etc. pp."
-  * holdout, cv, early stopping
-
-
-
-
-  
-  (old notes, use in new)
-  * feature sparsity: straightforward, only train model on selected features, goes somewhat against idea of deep learning,
-    where the model is supposed to decide on its own, which features to put importance on -> WHY?
-  * feature interaction
-    - create non-fully connected network by introducing network-groups based on the equivalence relations introduced in the EAGGA paper
-    - show formula why the interacting features need to be grouped together when using ReLU (cf. photos)
-  * monotonicity constraints
-    - for groups with contraint on monotonicity: clip weights to [0, infty), bias clipping not necessary
-    - show formula of how monotonicity is enforced with this
-  * changes (-) + similarities (+) to EAGGA paper (~ in-between)
-    + 2/3 holdout outer split for 'CV'- vs test-set
-    - train + eval each individual via 5-fold CV with 20\% of train set again reserved to determine early stopping -> best to visualise,
-      * early stopping necessary (as opposed to XGB) as NN can be trained forever, whereas tree implementations used by EAGGA paper have
-        max depth, etc.
-      * early stopping using min-epochs 200, patience 100, i.e. train for $\ge$ 200 epochs, always safe model with lowest loss, whenever
-        current loss > mean(losses of last 100 (patience) epochs), stop early + return model with lowest loss
-    ~ if no early stopping, train each fold (in 5-fold CV) for max 120 secs, do entire EAGGA loop per dataset for max 8 hrs
-    ~ training on Sagemaker Notebook instance
-      * initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
-      using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
-      * thus decided for more economic + ressourcenschonend t3.medium
-    - evaluation
-      * AUC + NF: straightforward
-      * NI: for each group with $\ge$ 2 features: sum from 1 to (\# features - 1), i.e ${\# features \choose 2}$,
-        then sum over all groups like this, then divide by p(p-1)/2, i.e. ${p \choose 2}$
-      * NNM: \# unconstrained features / \# all features
-    ~ feature + interaction detector: examination of decision trees not super straightforward in sklearn, hence simply use p=0.5
-    ? interaction detector (FAST)
-      * train logistic model on 80\% of data (only holdout train portion or all ??), evaluate on 20
-      * use mean accuracy (logistic metric) instead of RSS (LM metric)
-    + monotonicity detector as in paper, also use dec tree HPs from mlr3
-    ~ encoding of group structures similar, each feature will get its individual monotonicity sign from the detector, this is then fed to the dataset,
-      which then outputs the data according multiplied with the sign
+    - "instead of XGB as in the original paper, we apply the method to NNs to examine whether this type of regularisation can achieve interpretability on NNs while
+      outperforming EAGGA on XGB (original paper), ..., this requires special architecture, etc. pp."
+    - NN
+      * comprises of "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
+      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation
+        (implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
+    - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against of deep learning where model is supposed to decide itself,
+      which feature to "use" / put importance on -> ELABORATE
+    - feature interaction achieved by grouping, max-operation in ReLU induces interaction effect (different kind of interaction than e.g. in LM with multiplication)
+      -> equation why the interacting features need to be grouped together when using ReLU, cf. photos
+    - monotonicty constraint achieved by clipping weights to [0, infty) for restricted equivalence relations (monotonic decrease achieved via dataset object multiplying
+      features with their individual signs), bias clipping not necessary (constant additive term)
+      -> equation how monotonicity is enforced with this
+  * evaluation, holdout, cv, early stopping
+    - evaluation via dominated hypervolume along AUC-ROC, NF, NI, NNM as defined in original paper
+      * NF simply rel. \# of included features
+      * NI = sum of all possible pairwise interactions in each group over all possible pairwise interactions among all features = $\frac{\sum_g^G {p_g \choose 2}}{{p \choose 2}}$
+      * NNM = rel. \# unconstrained features
+    - outer holdout split: 2/3 train, 1/3 test (as in paper)
+      * run EAGGA on holdout train split, i.e. train + select best $\mu=100$ individuals based on non-dom-sorting (ascending) + crowding distance (descending) as tie breaker
+    - inner CV split on outer train portion: 5-fold (as in paper)
+      * in each fold fit model on 80\% of CV-train portion, use remaining 20\% of CV-train for early stopping
+    - early stopping criterion
+      * always train for min 200 epochs, keep track of model with lowest loss
+      * after that, use patience of 100: if current model's loss is > mean of last 100 epochs' losses
+      * if no early stopping, train each model for max 10 minutes
+      * then stop training, return model with lowest loss
+    -> add graphic of entire dataset split
+    - then evaluate on last fold from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
+  * hardware: training on Sagemaker Notebook instance
+    - initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
+    using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
+    - thus decided for more economic + ressourcen-schonend t3.medium
 
 
 \section{Experimental Results and Discussion}
