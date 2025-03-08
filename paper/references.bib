@@ -1,4 +1,4 @@
-# [1 Introduction]
+% [1 Introduction]
 
 % https://dl.acm.org/doi/10.1145/3583131.3590380
 @inproceedings{EAGGA,
@@ -17,4 +17,185 @@
   keywords = {group structure, evolutionary computation, multi-objective, tabular data, interpretability, performance, supervised learning},
   location = {Lisbon, Portugal},
   series = {GECCO '23}
+}
+
+
+% [Software used]
+
+% OpenML, cf. https://www.openml.org/terms
+% OpenML as a whole
+@article{OpenML,
+  author = {Vanschoren, Joaquin and van Rijn, Jan N. and Bischl, Bernd and Torgo, Luis},
+  title = {OpenML: networked science in machine learning},
+  year = {2014},
+  issue_date = {December 2013},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {15},
+  number = {2},
+  issn = {1931-0145},
+  url = {https://doi.org/10.1145/2641190.2641198},
+  doi = {10.1145/2641190.2641198},
+  abstract = {Many sciences have made significant breakthroughs by adopting online tools that help organize, structure and mine information that is too detailed to be printed in journals. In this paper, we introduce OpenML, a place for machine learning researchers to share and organize data in fine detail, so that they can work more effectively, be more visible, and collaborate with others to tackle harder problems. We discuss how OpenML relates to other examples of networked science and what benefits it brings for machine learning research, individual scientists, as well as students and practitioners.},
+  journal = {SIGKDD Explor. Newsl.},
+  month = jun,
+  pages = {49–60},
+  numpages = {12}
+}
+% OpenML Python package
+@article{OpenMLPython,
+  author  = {Matthias Feurer and Jan N. van Rijn and Arlind Kadra and Pieter Gijsbers and Neeratyoy Mallik and Sahithya Ravi and Andreas Müller and Joaquin Vanschoren and Frank Hutter},
+  title   = {OpenML-Python: an extensible Python API for OpenML},
+  journal = {Journal of Machine Learning Research},
+  year    = {2021},
+  volume  = {22},
+  number  = {100},
+  pages   = {1--5},
+  url     = {http://jmlr.org/papers/v22/19-920.html}
+}
+
+% NumPy, cf. https://numpy.org/citing-numpy/
+@Article{         NumPy,
+  title         = {Array programming with {NumPy}},
+  author        = {Charles R. Harris and K. Jarrod Millman and St{\'{e}}fan J.
+                  van der Walt and Ralf Gommers and Pauli Virtanen and David
+                  Cournapeau and Eric Wieser and Julian Taylor and Sebastian
+                  Berg and Nathaniel J. Smith and Robert Kern and Matti Picus
+                  and Stephan Hoyer and Marten H. van Kerkwijk and Matthew
+                  Brett and Allan Haldane and Jaime Fern{\'{a}}ndez del
+                  R{\'{i}}o and Mark Wiebe and Pearu Peterson and Pierre
+                  G{\'{e}}rard-Marchant and Kevin Sheppard and Tyler Reddy and
+                  Warren Weckesser and Hameer Abbasi and Christoph Gohlke and
+                  Travis E. Oliphant},
+  year          = {2020},
+  month         = sep,
+  journal       = {Nature},
+  volume        = {585},
+  number        = {7825},
+  pages         = {357--362},
+  doi           = {10.1038/s41586-020-2649-2},
+  publisher     = {Springer Science and Business Media {LLC}},
+  url           = {https://doi.org/10.1038/s41586-020-2649-2} 
+}
+
+% pandas, cf. https://pandas.pydata.org/about/citing.html
+% Sagemaker uses v1.5.3
+@software{pandas1,
+  author       = {The pandas development team},
+  title        = {pandas-dev/pandas: Pandas},
+  month        = jan,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {v1.5.3},
+  doi          = {10.5281/zenodo.7549438},
+  url          = {https://doi.org/10.5281/zenodo.7549438},
+}
+@InProceedings{ pandas2,
+  author    = { {W}es {M}c{K}inney },
+  title     = { {D}ata {S}tructures for {S}tatistical {C}omputing in {P}ython },
+  booktitle = { {P}roceedings of the 9th {P}ython in {S}cience {C}onference },
+  pages     = { 56 - 61 },
+  year      = { 2010 },
+  editor    = { {S}t\'efan van der {W}alt and {J}arrod {M}illman },
+  doi       = { 10.25080/Majora-92bf1922-00a }
+}
+
+% pytorch: TODO
+
+% scikit-learn
+@article{scikit-learn,
+  title={Scikit-learn: Machine Learning in {P}ython},
+  author={Pedregosa, F. and Varoquaux, G. and Gramfort, A. and Michel, V.
+          and Thirion, B. and Grisel, O. and Blondel, M. and Prettenhofer, P.
+          and Weiss, R. and Dubourg, V. and Vanderplas, J. and Passos, A. and
+          Cournapeau, D. and Brucher, M. and Perrot, M. and Duchesnay, E.},
+  journal={Journal of Machine Learning Research},
+  volume={12},
+  pages={2825--2830},
+  year={2011}
+}
+
+% scipy
+@ARTICLE{SciPy,
+  author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
+            Haberland, Matt and Reddy, Tyler and Cournapeau, David and
+            Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and
+            Bright, Jonathan and {van der Walt}, St{\'e}fan J. and
+            Brett, Matthew and Wilson, Joshua and Millman, K. Jarrod and
+            Mayorov, Nikolay and Nelson, Andrew R. J. and Jones, Eric and
+            Kern, Robert and Larson, Eric and Carey, C J and
+            Polat, {\.I}lhan and Feng, Yu and Moore, Eric W. and
+            {VanderPlas}, Jake and Laxalde, Denis and Perktold, Josef and
+            Cimrman, Robert and Henriksen, Ian and Quintero, E. A. and
+            Harris, Charles R. and Archibald, Anne M. and
+            Ribeiro, Ant{\^o}nio H. and Pedregosa, Fabian and
+            {van Mulbregt}, Paul and {SciPy 1.0 Contributors}},
+  title   = {{{SciPy} 1.0: Fundamental Algorithms for Scientific
+            Computing in Python}},
+  journal = {Nature Methods},
+  year    = {2020},
+  volume  = {17},
+  pages   = {261--272},
+  adsurl  = {https://rdcu.be/b08Wh},
+  doi     = {10.1038/s41592-019-0686-2},
+}
+
+% pymoo
+@ARTICLE{pymoo,
+  author={J. {Blank} and K. {Deb}},
+  journal={IEEE Access},
+  title={pymoo: Multi-Objective Optimization in Python},
+  year={2020},
+  volume={8},
+  number={},
+  pages={89497-89509},
+}
+
+% tqdm
+@software{tqdm,
+  author       = {Casper da Costa-Luis and
+                  Stephen Karl Larroque and
+                  Kyle Altendorf and
+                  Hadrien Mary and
+                  richardsheridan and
+                  Mikhail Korobov and
+                  Noam Yorav-Raphael and
+                  Ivan Ivanov and
+                  Marcel Bargull and
+                  Nishant Rodrigues and
+                  Shawn and
+                  Mikhail Dektyarev and
+                  Michał Górny and
+                  mjstevens777 and
+                  Matthew D. Pagel and
+                  Martin Zugnoni and
+                  JC and
+                  CrazyPython and
+                  Charles Newey and
+                  Antony Lee and
+                  pgajdos and
+                  Todd and
+                  Staffan Malmgren and
+                  redbug312 and
+                  Orivej Desh and
+                  Nikolay Nechaev and
+                  Mike Boyle and
+                  Max Nordlund and
+                  MapleCCC and
+                  Jack McCracken},
+  title        = {tqdm: A fast, Extensible Progress Bar for Python
+                   and CLI
+                  },
+  month        = nov,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v4.67.1},
+  doi          = {10.5281/zenodo.14231923},
+  url          = {https://doi.org/10.5281/zenodo.14231923},
+  swhid        = {swh:1:dir:4556fa8b9e2bffacf634b5378660ecb3db68431e
+                   ;origin=https://doi.org/10.5281/zenodo.595120;visi
+                   t=swh:1:snp:3b7ead939423abc779ad7715fdd3e6f2a93e7e
+                   71;anchor=swh:1:rel:1900ab2ad612c3d46028815e6bb1fd
+                   cd0caf6166;path=/
+                  },
 }
