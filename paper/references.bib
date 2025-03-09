@@ -1,6 +1,6 @@
 % [1 Introduction]
 
-% https://dl.acm.org/doi/10.1145/3583131.3590380
+% cf https://github.com/sumny/eagga/ + https://dl.acm.org/doi/10.1145/3583131.3590380
 @inproceedings{EAGGA,
   author = {Schneider, Lennart and Bischl, Bernd and Thomas, Janek},
   title = {Multi-Objective Optimization of Performance and Interpretability of Tabular Supervised Machine Learning Models},
@@ -23,7 +23,7 @@
 % [Software used]
 
 % OpenML, cf. https://www.openml.org/terms
-% OpenML as a whole
+% OpenML as a whole, cf. https://dl.acm.org/doi/10.1145/2641190.2641198
 @article{OpenML,
   author = {Vanschoren, Joaquin and van Rijn, Jan N. and Bischl, Bernd and Torgo, Luis},
   title = {OpenML: networked science in machine learning},
@@ -42,7 +42,7 @@
   pages = {49–60},
   numpages = {12}
 }
-% OpenML Python package
+% OpenML Python package, cf. https://github.com/openml/openml-python
 @article{OpenMLPython,
   author  = {Matthias Feurer and Jan N. van Rijn and Arlind Kadra and Pieter Gijsbers and Neeratyoy Mallik and Sahithya Ravi and Andreas Müller and Joaquin Vanschoren and Frank Hutter},
   title   = {OpenML-Python: an extensible Python API for OpenML},
@@ -79,7 +79,7 @@
 }
 
 % pandas, cf. https://pandas.pydata.org/about/citing.html
-% Sagemaker uses v1.5.3
+% Sagemaker uses v1.5.3, cf. https://zenodo.org/records/7549438
 @software{pandas1,
   author       = {The pandas development team},
   title        = {pandas-dev/pandas: Pandas},
@@ -100,9 +100,25 @@
   doi       = { 10.25080/Majora-92bf1922-00a }
 }
 
-% pytorch: TODO
+% pytorch, cf. https://github.com/pytorch/pytorch/blob/main/CITATION.cff
+@inproceedings{PyTorch,
+  author = {Ansel, Jason and Yang, Edward and He, Horace and Gimelshein, Natalia and Jain, Animesh and Voznesensky, Michael and Bao, Bin and Bell, Peter and Berard, David and Burovski, Evgeni and Chauhan, Geeta and Chourdia, Anjali and Constable, Will and Desmaison, Alban and DeVito, Zachary and Ellison, Elias and Feng, Will and Gong, Jiong and Gschwind, Michael and Hirsh, Brian and Huang, Sherlock and Kalambarkar, Kshiteej and Kirsch, Laurent and Lazos, Michael and Lezcano, Mario and Liang, Yanbo and Liang, Jason and Lu, Yinghai and Luk, C. K. and Maher, Bert and Pan, Yunjie and Puhrsch, Christian and Reso, Matthias and Saroufim, Mark and Siraichi, Marcos Yukio and Suk, Helen and Zhang, Shunting and Suo, Michael and Tillet, Phil and Zhao, Xu and Wang, Eikan and Zhou, Keren and Zou, Richard and Wang, Xiaodong and Mathews, Ajit and Wen, William and Chanan, Gregory and Wu, Peng and Chintala, Soumith},
+  title = {PyTorch 2: Faster Machine Learning Through Dynamic Python Bytecode Transformation and Graph Compilation},
+  year = {2024},
+  isbn = {9798400703850},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  url = {https://doi.org/10.1145/3620665.3640366},
+  doi = {10.1145/3620665.3640366},
+  abstract = {This paper introduces two extensions to the popular PyTorch machine learning framework, TorchDynamo and TorchInductor, which implement the torch.compile feature released in PyTorch 2. TorchDynamo is a Python-level just-in-time (JIT) compiler that enables graph compilation in PyTorch programs without sacrificing the flexibility of Python. It achieves this by dynamically modifying Python bytecode before execution and extracting sequences of PyTorch operations into an FX graph, which is then JIT compiled using one of many extensible backends. TorchInductor is the default compiler backend for TorchDynamo, which translates PyTorch programs into OpenAI's Triton for GPUs and C++ for CPUs. Results show that TorchDynamo is able to capture graphs more robustly than prior approaches while adding minimal overhead, and TorchInductor is able to provide a 2.27\texttimes{} inference and 1.41\texttimes{} training geometric mean speedup on an NVIDIA A100 GPU across 180+ real-world models, which outperforms six other compilers. These extensions provide a new way to apply optimizations through compilers in eager mode frameworks like PyTorch.},
+  booktitle = {Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2},
+  pages = {929–947},
+  numpages = {19},
+  location = {La Jolla, CA, USA},
+  series = {ASPLOS '24}
+}
 
-% scikit-learn
+% scikit-learn, cf. https://scikit-learn.org/stable/about.html
 @article{scikit-learn,
   title={Scikit-learn: Machine Learning in {P}ython},
   author={Pedregosa, F. and Varoquaux, G. and Gramfort, A. and Michel, V.
@@ -115,7 +131,7 @@
   year={2011}
 }
 
-% scipy
+% scipy, cf. https://scipy.org/citing-scipy/
 @ARTICLE{SciPy,
   author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
             Haberland, Matt and Reddy, Tyler and Cournapeau, David and
@@ -140,7 +156,7 @@
   doi     = {10.1038/s41592-019-0686-2},
 }
 
-% pymoo
+% pymoo, cf. https://pymoo.org/references.html
 @ARTICLE{pymoo,
   author={J. {Blank} and K. {Deb}},
   journal={IEEE Access},
@@ -151,7 +167,7 @@
   pages={89497-89509},
 }
 
-% tqdm
+% tqdm, cf. https://github.com/tqdm/tqdm + https://zenodo.org/records/14231923
 @software{tqdm,
   author       = {Casper da Costa-Luis and
                   Stephen Karl Larroque and

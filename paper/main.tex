@@ -73,6 +73,7 @@ regularisation
     + explicit feature selection simply by not inluding a feature
   * another classical NN regularisation technique: dropout against co-adaptation
   * early stopping against overfitting when using iterative method
+-> all of those require specifying Hyperparameters in advance
 
 %\blindmathpaper
 
@@ -91,31 +92,32 @@ regularisation
 \subsection{Hyperparameter Optimization (HPO)}
 - grid + random search
 - Bayesian optimisation
--> both unsuitable for our task
-  + would be ok for weight decay (L2) + dropout optim
-  + but: approaches for feature selection (L1) not feasible
-    (a) 0-1 penalty on included features added to loss, problems:
-      - how to choose regularisation parameter?
-      - not all features equally important -> weighted 0-1 loss? how to choose weights?
-    (b) directly optimise over binary hpyercube -> how to optim over non-ordinal discrete space?
--> evolutionary algorithms can be a solution for these types of problems
+- evolutionary algortihms
   * CMA-ES
-  * NSGA-II
-    - non-dominated sorting
-    - crowding distance
-    -> give intuition why non-dom-sort (asc) + crowding dist (desc) makes sense for selecting individuals
+  * differential evolution
+  
+
 \subsection{Neural Architecture Search (NAS)}
-not sure if super relevant as I don't use a specific NAS technology (e.g. one-shot, etc.) but simply optimise over \# layers + \# nodes as HPs
+give background on NAS (e.g. one-shot, etc.), but for this project wanted to have a "minimal viable product" to test whether NNs can yield competitive performance
+on tabular ML + be interpretable using EAGGA at all before optimising the inner networks to the max
 
 \subsection{Multi-Objective Optimization}
 - problem: all aforementioned approaches are a-priori approaches -> we choose best HPs (weight decay, features used, dropout) w.r.t. performance
 - intro MOO
-\subsubsection{Scalarisation}
 \subsubsection{Pareto-optimality}
+\subsubsection{A-priori}
+\subsubsection{A-posteriori}
+- NSGA-II (MOEA)
+  * non-dominated sorting
+  * crowding distance
+  -> give intuition why non-dom-sort (asc) + crowding dist (desc) makes sense for selecting individuals
 
 
 %likely shouldn't be an entire section
 \section{EAGGA}
+- for our problem (interpretability) we cannot use regular EA algorithms as we are also interested in reducing pairwise interactions + non-monotone feature effects
+- this creates high-dim search space as shown in EAGGA paper -> they provide a framework to efficiently traverse through a space that is reduced to only sensible HP
+  configuration (e.g. interaction of A,B with A monot incr and B monot decr -> couldn't be guaranteed -> don't look at it in first place)
 - NSGA-II inspired evolutionary / genetic algorithm
 - introduces group structure for more efficient optimization over the entire search space
 
@@ -196,8 +198,8 @@ not sure if super relevant as I don't use a specific NAS technology (e.g. one-sh
 
 
 \section{Conclusion and Future Outlook}
-
-Here is a citation \cite{EAGGA}.
+- MO BO on group structure space possible?
+- here is a citation \cite{EAGGA}.
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
@@ -206,7 +208,7 @@ Here is a citation \cite{EAGGA}.
 
 \appendix
 \section{Software used}
-for implementation we used openml \cite{OpenML}, \cite{OpenMLPython}, numpy \cite{numpy}, pandas \cite{pandas1}, \cite{pandas2}, pytorch \textbf{TODO},
+for implementation we used openml \cite{OpenML}, \cite{OpenMLPython}, numpy \cite{numpy}, pandas \cite{pandas1}, \cite{pandas2}, pytorch \cite{PyTorch},
 scikit-learn \cite{scikit-learn}, scipy \cite{SciPy}, pymoo \cite{pymoo}, and tqdm \cite{tqdm}
 
 \section{}
