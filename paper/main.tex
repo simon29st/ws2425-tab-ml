@@ -82,18 +82,24 @@ regularisation
 
 % feels better in front of AutoML, as it feels more qualitative, less quantitative
 \subsection{Interpretability}
-As there is no clear definition, we will consider ``interpretability'' as ``the ability to provide \textit{explanations} in \textit{understandable terms} to a human'',
+As there is no clear definition for interpretability, we will consider it as ``the ability to provide \textit{explanations} in \textit{understandable terms} to a human'',
 where \textit{explanations} are logical decision rules and \textit{understandable terms} relate to commonly used terms in the domain of the problem,
 as suggested by \citet[chap. 1]{survey_NN_interpretability}.
-We use the term ``explanability'' in an exchangeable manner with ``interpretability'', as is commonly done.
+Further, we use the term ``explanability'' in an exchangeable manner with ``interpretability'', as is commonly done.
 
 (Why Interpretability is desirable?)
 - in many ways desirable, as per \citet[pp. 3-4]{Zach2019InterpretabilityOD}, e.g.
   * \textbf{gaining trust}: most notable use case, e.g. medical diagnosis: predictions need to be validated by doctors \citep[p. 1]{review_NN_interpretability}
-  * \textbf{model debugging}: model is optimised w.r.t. loss and judged on accuracy, having an interpretable model + model induction process can help find ways to improve accuracy
-  * \textbf{scientific understanding}: when only models can make sense of increasingly complex data, interpretability enables extraction of learnt knowledge encoded in the model
+  * \textbf{model debugging}
+    - model is optimised w.r.t. loss and judged on accuracy
+    - might have unexpected performance drops in certain situations, makes model unreliable \citep[1B]{survey_NN_interpretability}
+    - having an interpretable model + model induction process can help find ways to improve accuracy + reliability
+  * \textbf{scientific understanding}: when only models can make sense of increasingly complex data anymore, interpretability enables extraction of learnt knowledge encoded
+    in the model to make it accessible + reliable to humans (also mentioned here \citep[p. 1]{review_NN_interpretability})
   * \textbf{subconcious bias}, e.g. loan approval: must ensure that decision is not discriminatory
-  * \textbf{regulatory}, such as EU's "Right to Explanation" warranted by the GDPR \citep[p. 1]{review_NN_interpretability}
+  * \textbf{regulatory}
+    - such as EU's "Right to Explanation" warranted by the GDPR \citep[p. 1]{review_NN_interpretability} or
+    - drug approval processes in situations where a machine learning model discovered a new drug, process needs to be transparent for the regulator to approve \citep[1B]{survey_NN_interpretability}
 
 Commonly, methods for model interpretation are divided into intrinsic methods, where the search space only comprises models with a structure simple enough to be
 considered ``explainable'' (such as tree-based or simple linear models), and post-hoc methods, where interpretation methods are applied after model training.
@@ -101,11 +107,23 @@ Amongst post-hoc techniques, we can further divide the space into model-specific
 (e.g. partial depence plots, ALE) methods. \citet[chap. 3.2]{molnar2022}
 
 (Taxonomy)
-As standard neural networks (NNs) are inherently non-interpretable models, the taxonomy introduced by \citet[chap. 2]{survey_NN_interpretability} proves particulary useful
-to categorise NN explanability methods along 3 dimensions:
-- \textbf{passive vs active approaches}
-- \textbf{type of explanations}
-- \textbf{local vs global interpretability}
+\citet[chap. 2]{survey_NN_interpretability} extend this distinction to a 3-dimensional taxonomy, allowing for better categorisation of neural networks (NN), a model class
+that in its regular feedforwad form is inherently non-interpretable.
+% alternative
+%As regular feedforward neural networks (NNs) are inherently non-interpretable models, the taxonomy introduced by \citet[chap. 2]{survey_NN_interpretability} proves
+%particulary useful to categorise NN explanability methods along 3 dimensions:
+- \textbf{Passive vs Active Approaches}
+  * passive: post-hoc
+  * active: changing architecture or training process to make model interpretable
+- \textbf{Type of Explanations}
+  * examples: providing examples of what leads to desired output
+  * attribution: attributing effect on output for a specific feature
+  * hidden semantics: examine what type of inputs specific neurons / layers pick up on
+  * rules: logical rules, e.g. if-then, trees
+- \textbf{Local vs Global Interpretability}
+  * local: explanation based on individual samples
+  * semi-local: explanation based on set of samples, e.g. grouped together by some criterion
+  * global: explaining network as a whole
 
 \subsection{Hyperparameter Optimization (HPO)}
 - grid + random search
