@@ -98,7 +98,7 @@ Further, we use the term ``explanability'' in an exchangeable manner with ``inte
     in the model to make it accessible + reliable to humans (also mentioned here \citep[p. 1]{review_NN_interpretability})
   * \textbf{subconcious bias}, e.g. loan approval: must ensure that decision is not discriminatory
   * \textbf{regulatory}
-    - such as EU's "Right to Explanation" warranted by the GDPR \citep[p. 1]{review_NN_interpretability} or
+    - such as EU's "Right to Explanation" warranted by the GDPR \citep[p. 1]{review_NN_interpretability}, \citep[1B]{survey_NN_interpretability} or
     - drug approval processes in situations where a machine learning model discovered a new drug, process needs to be transparent for the regulator to approve \citep[1B]{survey_NN_interpretability}
 
 Commonly, methods for model interpretation are divided into intrinsic methods, where the search space only comprises models with a structure simple enough to be
@@ -124,6 +124,26 @@ that in its regular feedforwad form is inherently non-interpretable.
   * local: explanation based on individual samples
   * semi-local: explanation based on set of samples, e.g. grouped together by some criterion
   * global: explaining network as a whole
+
+(Evaluation)
+- objective evaluation difficult, as no clear definition of interpretability
+- \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise possible evaluation methods
+  * \textbf{application-grounded evaluation}
+    - most rigorous method, also most expensive + time consuming
+    - idea: evaluate ``interpretability model'' directly w.r.t. the task -> human experts evaluate the outcome
+    - e.g.: model performing medical diagnosis on patients would be evaluated by based on doctors doing the same
+  * \textbf{human-grounded metrics}
+    - similar to application-grounded, but tries to simplify task (while preserving its essence) so that laypersons can do it
+    - cheaper due to larger, less qualified subject pool
+    - especially suitable if only general concepts of the tasks need to be validated
+    - examples for evaluation set-up
+      * binary forced choice: human evaluator chooses which of two explanations he finds better
+      * forward simulation: evaluator must correctly simulate model output when presented model input + explanation % perhaps binary forced choice is already enough to include, this (and the third one is a bit awkward to explain why this is good for interpretability imo)
+  * \textbf{functionally-grounded evaluation}
+    - assess explanation quality via some formally defined proxy for interpretability
+    - no human time nor cost required beyond initial formulation of proxy
+    - e.g. if we already have an interpretable model class (e.g. identified via human-grounded evaluation), can then rank different models of that class based on proxy
+    - main challenge: what proxies
 
 \subsection{Hyperparameter Optimization (HPO)}
 - grid + random search
