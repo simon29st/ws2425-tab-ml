@@ -153,16 +153,16 @@ that in its fully-connected feedforwad form is inherently non-interpretable.
 
 [model free]
 (grid + random search)
-- most basic strategy: grid search, for all HPs define range of interest, then evaluate cartesian product of those
+- most basic strategy: grid search, for all HPs define range of interest, then evaluate cartesian product of those -> scales poorly in \# of HP dimensions + \# of query points per HP range
 - random search
   * randomly sample value for each HP until it runs out of budget
-  * explorative: for budget $B$, each HP will (almost guaranteed) be queried with $B$ different values, whereas grid search only $B^{1/N}$ for $N$ HPs
+  * explorative: for budget $B$, each HP will (likely) be queried with $B$ different values, whereas grid search only $B^{1/N}$ for $N$ HPs
   * thus better than grid in case of some HPs being non-informative (almost always the case), as it doesn't waste time specifically exploring these (as does grid)
   * usually useful as baseline, as no assumptions about model, easy to parallelise, high exploration, and in expectation will ``achieve performance arbitrarily close to the optimum''
 
 (evolutionary algorithms)
 - another model-free class of optimisation algorithms, inspired by naturally occuring evolution
-- based on a population, which in each generation (iteration) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
+- based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
   * reproduction: pick an individual to reproduce with p proportional to its fitness
   * crossover
     - select 2 ``parents'' from pool of reproducing individuals
@@ -199,7 +199,34 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     - selection: greedy, compare fitness of $\boldsymbol{u}_{i,G+1}$ with $\boldsymbol{x}_{i,G}$, pick better
 
 [model based]
+- contrast to model free, fit a surrogate model on blackbox problem + optimise this
 (Bayesian optimisation)
+- iterative algo comprising of
+  * surrogate model for black box problem, needs to be able to model mean + variance
+  * acquisition function, to decide which point to query next
+- in each iteration
+  * fit surrogate model on all data points (posterior distribution)
+  * get highest utility point from acquisition function for newly fitted surrogate model -> add to data points
+  -> hence Bayesian, get new query point given already previously fitted points
+  * acquisition function trades off exploration + exploitation of surrogate
+  * BO up to here from \citep[chap. 1.3.2]{feurer_hyperparameter_2019} + \citep[pp. 2-3]{frazier2018tutorialbayesianoptimization}
+- no optimising of model directly, instead iteratively optimise acquisition function
+- common choices for surrogate models
+  * GPs
+    - pros
+      * fully specified by mean + covariance
+        - covariance function (aka kernel) solely determines quality of GP
+        - kernel as function of two points from search space, yields their covariance
+        - usual property of kernels: the closer points are in search space, the more strongly their correlation \citep[p. 5]{frazier2018tutorialbayesianoptimization}
+      * well-calibrated uncertainty estimates
+      * closed-form computability
+    - con: neither scales well in \# of data points nor in \# of HP dimensions BUT workaround: sparse GPs, approx full GP with small subset of original dataset
+  * random forests
+    - can handle complex search spaces (high-dim, categorical, hierarchical), unlike GPs
+    - computational complexity scales far better than GPs
+      * GPs $O(n^3)$ fitting, $O(n^2)$ predicting
+      * RFs $O(n \log n)$ fitting, $O(\log n)$ predicting
+- BO stuff from \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
 
   
 \subsection{Neural Architecture Search (NAS)}
