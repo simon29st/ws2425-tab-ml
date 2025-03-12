@@ -163,12 +163,12 @@ that in its fully-connected feedforwad form is inherently non-interpretable.
 (evolutionary algorithms)
 - another model-free class of optimisation algorithms, inspired by naturally occuring evolution
 - based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
-  * reproduction: pick an individual to reproduce with p proportional to its fitness
-  * crossover
+  * \textbf{reproduction}: pick an individual to reproduce with p proportional to its fitness
+  * \textbf{crossover}
     - select 2 ``parents'' from pool of reproducing individuals
     - for a position $k$ in their HP configs, with certain p, swap their values after $k$, yielding 2 children
     %use example from book page 12
-  * mutation: with certain p, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
+  * \textbf{mutation}: with certain p, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
 - selection at end of each genertion: keep $\mu$ best individuals (based on some fitness function), either from only offspring (``$(\mu,\lambda)$-selection'')
   or (more commonly) from population + offspring (``$(\mu+\lambda)$-selection'', guaranteed to keep best individual)
 - pro: conceptually simple + can handle even complex parameter spaces (continuous, discrete, hierarchical, etc.) given appropriate implementation of operators
@@ -212,26 +212,51 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * BO up to here from \citep[chap. 1.3.2]{feurer_hyperparameter_2019} + \citep[pp. 2-3]{frazier2018tutorialbayesianoptimization}
 - no optimising of model directly, instead iteratively optimise acquisition function
 - common choices for surrogate models
-  * GPs
+  * \textbf{gaussian processes}
     - pros
       * fully specified by mean + covariance
         - covariance function (aka kernel) solely determines quality of GP
         - kernel as function of two points from search space, yields their covariance
+        % TODO: write down kernel equation, cf. p 10ff https://ieeexplore.ieee.org/document/7352306
         - usual property of kernels: the closer points are in search space, the more strongly their correlation \citep[p. 5]{frazier2018tutorialbayesianoptimization}
       * well-calibrated uncertainty estimates
       * closed-form computability
     - con: neither scales well in \# of data points nor in \# of HP dimensions BUT workaround: sparse GPs, approx full GP with small subset of original dataset
-  * random forests
+  * \textbf{random forests}
     - can handle complex search spaces (high-dim, categorical, hierarchical), unlike GPs
     - computational complexity scales far better than GPs
       * GPs $O(n^3)$ fitting, $O(n^2)$ predicting
       * RFs $O(n \log n)$ fitting, $O(\log n)$ predicting
-- BO stuff from \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
+- common choices for acquisition functions
+  % TODO: cf. p. 13 cf. p 10ff https://ieeexplore.ieee.org/document/7352306
+  * \textbf{expected improvement}
+  * \textbf{Thompson sampling}
+- all BO stuff if not specified differently comes from \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
 
   
 \subsection{Neural Architecture Search (NAS)}
-give background on NAS (e.g. one-shot, etc.), but for this project wanted to have a "minimal viable product" to test whether NNs can yield competitive performance
-on tabular ML + be interpretable using EAGGA at all before optimising the inner networks to the max
+- approaches specifically for NN HPO due to flexible structure of NNs and thus very large search space (each layer can have different \# nodes, different activations, for CNN different pooling, etc. operations)
+- we don't employ NAS for our extension as research focusses on the NLP and image domains, % TODO: find some more references
+  whose datasets exhibit strong correlation amongst features (i.e. tokens or pixels, respectively), an effect that is much weaker for tabular data \citep[p. 1]{Borisov_2024}
+- at least want to give a little overview over most notable approaches
+  * \textbf{cell search space}
+    - modularise NN architecture into cells, NN as chain-structure of those
+    - cell = basic building block, fixed component of an NN
+      * e.g. linear layer with specific \# of neurons in feedforward
+      * or convolutional / pooling / etc layer for CNN
+    - then optimise sequential placement of the cells as HPO problem
+      * e.g. via random search or BO
+      * \citet[p. 3]{zoph2017neuralarchitecturesearchreinforcement} + \citet[pp. 2-4]{Zoph_2018_CVPR} use RNN to recursively optimise HPs of a cell given already determined
+        previous cells (+ HPs of current cell), which is trained via RL with the different HPs the RNN predicts being the actions and performance on held-out data being reward
+    - \citep[chap. 3.2]{elsken_neural_2019}
+  * \textbf{one-shot model}
+    - trains one overall ``fabric'' comprising all architectures of search space
+    - visualisation as DAG, nodes are nodes, edges in-between are operations on a node
+    - each path through DAG (from input to output node) represents one architecture of search space -> train entire DAG, then pick optimal path (architecture)
+    - pro: very efficient training, individual architectures share operations along edges they share, training one-shot model trains all subsumed models (more expensive
+      than training a single model but less expensive than trying out all configurations included in the fabric)
+    - \citep[pp. 1-2, p.8]{saxena2017convolutionalneuralfabrics}
+    % don't necessarily talk about co-adaptation problem
 
 \subsection{Multi-Objective Optimization}
 - problem: all aforementioned approaches are a-priori approaches -> we choose best HPs (weight decay, features used, dropout) w.r.t. performance
