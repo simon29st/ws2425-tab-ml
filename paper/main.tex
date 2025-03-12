@@ -56,7 +56,7 @@
 \end{abstract}
 
 \begin{keywords}
-  tabular data, multi-objective optimization, deep learning
+  tabular data, multi-objective optimization, interpretability, deep learning
 \end{keywords}
 
 \section{Introduction}
@@ -259,11 +259,15 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     % don't necessarily talk about co-adaptation problem
 
 \subsection{Multi-Objective Optimization}
-- problem: all aforementioned approaches are a-priori approaches -> we choose best HPs (weight decay, features used, dropout) w.r.t. performance
 - intro MOO
 \subsubsection{Pareto-optimality}
 \subsubsection{A-priori}
 \subsubsection{A-posteriori}
+- problem a priori
+  * either restrict search space to ``enforce our will'' (e.g. only use 50\% of features), optimise only prediction performance + use this
+  * or leave search space unrestricted but adjust loss function to incorporate multiple objectives + take optimum from there
+  * in either case: no knowledge of interplay between HP config + performance on all objectives
+  * a-posteriori evaluates configs just as a-priori, but keeps track of multiple ``best'' (non-dominated) solutions -> makes relationship between HP config + objectives visible
 - NSGA-II (MOEA)
   * non-dominated sorting
   * crowding distance
@@ -272,6 +276,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 
 %likely shouldn't be an entire section
 \section{EAGGA}
+- combines all previously mentioned topics: interpretability, HPO, MOO
 - for our problem (interpretability) we cannot use regular EA algorithms as we are also interested in reducing pairwise interactions + non-monotone feature effects
 - this creates high-dim search space as shown in EAGGA paper -> they provide a framework to efficiently traverse through a space that is reduced to only sensible HP
   configuration (e.g. interaction of A,B with A monot incr and B monot decr -> couldn't be guaranteed -> don't look at it in first place)
