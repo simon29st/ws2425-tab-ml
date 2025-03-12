@@ -29,6 +29,7 @@
   url={https://api.semanticscholar.org/CorpusID:198979458}
 }
 
+
 @article{review_NN_interpretability,
   title = {Interpretability of deep neural networks: A review of methods, classification and hardware},
   journal = {Neurocomputing},
@@ -43,6 +44,7 @@
   abstract = {Artificial intelligence, and especially deep neural networks, have evolved substantially in the recent years, infiltrating numerous domains of applications, often greatly impactful to society’s well-being. As a result, the need to understand how these models operate in depth and to access explanations of their decisions has become more vital than ever. Tending to this demand, the following paper aims to provide a thorough overview of the methods that have so far been developed to explain deep neural networks. Key aspects of explainability are defined and a straightforward classification of existing approaches is introduced, along with numerous examples. The task of realizing these methods on hardware is also discussed to complete the understanding of their application.}
 }
 
+
 @ARTICLE{survey_NN_interpretability,
   author={Zhang, Yu and Tiňo, Peter and Leonardis, Aleš and Tang, Ke},
   journal={IEEE Transactions on Emerging Topics in Computational Intelligence}, 
@@ -55,6 +57,7 @@
   doi={10.1109/TETCI.2021.3100641}
 }
 
+
 @book{molnar2022,
   title      = {Interpretable Machine Learning},
   author     = {Christoph Molnar},
@@ -64,6 +67,7 @@
   url        = {https://christophm.github.io/interpretable-ml-book}
 }
 
+
 @article{DoshiVelez2017TowardsAR,
   title={Towards A Rigorous Science of Interpretable Machine Learning},
   author={Finale Doshi-Velez and Been Kim},
@@ -71,6 +75,65 @@
   year={2017},
   url={https://api.semanticscholar.org/CorpusID:11319376}
 }
+
+
+@inproceedings{feurer_hyperparameter_2019,
+    author = {Feurer, Matthias and Hutter, Frank},
+    title = {Hyperparameter Optimization},
+    pages = {3-38},
+    chapter = {1},
+    crossref = {automl}
+}
+% TODO: for some reason this doesn't show up in references, even though 'feurer_hyperparameter_2019' is cited and has this as crossref
+@book{automl,
+    editor = {Hutter, Frank and Kotthoff, Lars and Vanschoren, Joaquin},
+    publisher = {Springer},
+    title = {Automatic Machine Learning: Methods, Systems, Challenges},
+    year = {2019}
+}
+
+
+@book{genetic_algos,
+  author = {Goldberg, David E.},
+  title = {Genetic Algorithms in Search, Optimization and Machine Learning},
+  year = {1989},
+  isbn = {0201157675},
+  publisher = {Addison-Wesley Longman Publishing Co., Inc.},
+  address = {USA},
+  edition = {1st},
+  abstract = {From the Publisher:This book brings together - in an informal and tutorial fashion - the computer techniques, mathematical tools, and research results that will enable both students and practitioners to apply genetic algorithms to problems in many fields. Major concepts are illustrated with running examples, and major algorithms are illustrated by Pascal computer programs. No prior knowledge of GAs or genetics is assumed, and only a minimum of computer programming and mathematics background is required.}
+}
+
+
+@misc{hansen2023cmaevolutionstrategytutorial,
+      title={The CMA Evolution Strategy: A Tutorial}, 
+      author={Nikolaus Hansen},
+      year={2023},
+      eprint={1604.00772},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/1604.00772}, 
+}
+
+
+@Article{differential_evolution,
+  author={Storn, Rainer and Price, Kenneth},
+  title={Differential Evolution -- A Simple and Efficient Heuristic for global Optimization over Continuous Spaces},
+  journal={Journal of Global Optimization},
+  year={1997},
+  month={Dec},
+  day={01},
+  volume={11},
+  number={4},
+  pages={341-359},
+  abstract={A new heuristic approach for minimizing possiblynonlinear and non-differentiable continuous spacefunctions is presented. By means of an extensivetestbed it is demonstrated that the new methodconverges faster and with more certainty than manyother acclaimed global optimization methods. The newmethod requires few control variables, is robust, easyto use, and lends itself very well to parallelcomputation.},
+  issn={1573-2916},
+  doi={10.1023/A:1008202821328},
+  url={https://doi.org/10.1023/A:1008202821328}
+}
+
+
+
 
 
 
@@ -108,6 +171,7 @@
   url     = {http://jmlr.org/papers/v22/19-920.html}
 }
 
+
 % NumPy, cf. https://numpy.org/citing-numpy/
 @Article{         NumPy,
   title         = {Array programming with {NumPy}},
@@ -132,6 +196,7 @@
   url           = {https://doi.org/10.1038/s41586-020-2649-2} 
 }
 
+
 % pandas, cf. https://pandas.pydata.org/about/citing.html
 % Sagemaker uses v1.5.3, cf. https://zenodo.org/records/7549438
 @software{pandas1,
@@ -144,6 +209,7 @@
   doi          = {10.5281/zenodo.7549438},
   url          = {https://doi.org/10.5281/zenodo.7549438},
 }
+
 @InProceedings{ pandas2,
   author    = { {W}es {M}c{K}inney },
   title     = { {D}ata {S}tructures for {S}tatistical {C}omputing in {P}ython },
@@ -153,6 +219,7 @@
   editor    = { {S}t\'efan van der {W}alt and {J}arrod {M}illman },
   doi       = { 10.25080/Majora-92bf1922-00a }
 }
+
 
 % pytorch, cf. https://github.com/pytorch/pytorch/blob/main/CITATION.cff
 @inproceedings{PyTorch,
@@ -172,6 +239,7 @@
   series = {ASPLOS '24}
 }
 
+
 % scikit-learn, cf. https://scikit-learn.org/stable/about.html
 @article{scikit-learn,
   title={Scikit-learn: Machine Learning in {P}ython},
@@ -184,6 +252,7 @@
   pages={2825--2830},
   year={2011}
 }
+
 
 % scipy, cf. https://scipy.org/citing-scipy/
 @ARTICLE{SciPy,
@@ -210,6 +279,7 @@
   doi     = {10.1038/s41592-019-0686-2},
 }
 
+
 % pymoo, cf. https://pymoo.org/references.html
 @ARTICLE{pymoo,
   author={J. {Blank} and K. {Deb}},
@@ -220,6 +290,7 @@
   number={},
   pages={89497-89509},
 }
+
 
 % tqdm, cf. https://github.com/tqdm/tqdm + https://zenodo.org/records/14231923
 @software{tqdm,
