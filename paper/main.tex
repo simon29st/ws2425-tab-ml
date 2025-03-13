@@ -282,7 +282,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * goal: minimise vector
   * \citep[p. 11]{10.1145/3610536}
 \subsubsection{Pareto-optimality}
-- problem: usually conflicting objectives, i.e. minimisation of $\boldsymbol{c}$ along all dimensions not possible
+- problem: usually conflicting objectives, i.e. minimisation of $\boldsymbol{c}$ not possible along all dimensions
 - thus aim to find trade-off solutions of non-dominated points
 - we say a point dominates another
   * if there is no other point strictly better in at least one dimension and better or equal in the remaining ones
@@ -293,17 +293,31 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 - Pareto front: image of nondominated points
 - goal: find set of nondominated points $\hat{\mathcal{P}}$ approximating true Pareto set $\mathcal{P}$ well
 \subsubsection{A-priori}
-- requires specifying trade-off between objectives a-priori
-- simplest approach: different versions of \textbf{scalarization}
+- requires specifying trade-off between objectives a-priori, will outline 2 popular approaches
+- e.g. different versions of \textbf{scalarization}
   * weighted sum of objective functions
-    - $\min_{x\in\mathcal{X}} w_i f_i(x)$ with $\sum_{i=1}^k w_i=1$ and $w_i>0,\forall i=1,...,k$
+    - $\argmin_{\boldsymbol\lambda\in\Lambda} w_i c_i(\boldsymbol\lambda)$ with $\sum_{i=1}^k w_i=1$ and $w_i>0,\forall i=1,...,k$
+    - drawbacks
+      * solution sensitive to weights
+      * different users might have different opinions on weights \citep[chap. 3.1]{NSGA}
     - \citep[p. 11]{10.1145/3610536}
-  * Chebyshev: provably converges to Pareto front
+  * $\epsilon$-constraint
+    - translate all but one objective into constraint, then optimise remaining objective under subject to the constraints
+    - $\text{w.l.o.g.} \argmin_{\boldsymbol\lambda\in\Lambda} c_1(\boldsymbol\lambda) \text{ s.t. } c_2(\boldsymbol\lambda)\le\epsilon_2,...,c_m(\boldsymbol\lambda)\le\epsilon_m$
+    - conceputally similar to weighted sum: also sensitive to constraints, must be chosen sensibly
+    - \citep[p. 12]{10.1145/3610536}
+- \textbf{lexicographic method}
+  * define priorisation of objectives
+  * greedily optimise objectives in order of priority, constraint to the solutions of the already optimised (higher-priority) objectives
+  * again very dependent on user-defined priorisation
+  * \citep[p. 13749]{lexicographic_MOO}  % TODO: perhaps find a different source more related to ML
 \subsubsection{A-posteriori}
 - problem a priori
   * either restrict search space to ``enforce our will'' (e.g. only use 50\% of features), optimise only prediction performance + use this
   * or leave search space unrestricted but adjust loss function to incorporate multiple objectives + take optimum from there
   * in either case: no knowledge of interplay between HP config + performance on all objectives
+  * in practical applications, it is oftentimes useful to make the decision of which point of the Pareto set to use a-posteriori, e.g. if only a slight decrease in
+    one objective translates to a significant improvement in another that would have been missed if the problem was optimised using a-priori methods
   * a-posteriori evaluates configs just as a-priori, but keeps track of multiple ``best'' (non-dominated) solutions -> makes relationship between HP config + objectives visible
 - NSGA-II (MOEA)
   * non-dominated sorting
