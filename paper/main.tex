@@ -278,7 +278,20 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 \subsection{Multi-Objective Optimization}
 - in most practical use cases one doesn't just want to optimise for performance but e.g. also for interpretability using some proxy metrics
 - formal definition
+  * vector of objectives $c_1,c_2,...,c_m=\boldsymbol{c}:\Lambda\rightarrow\mathbb{R}^m$
+  * goal: minimise vector
+  * \citep[p. 11]{10.1145/3610536}
 \subsubsection{Pareto-optimality}
+- problem: usually conflicting objectives, i.e. minimisation of $\boldsymbol{c}$ along all dimensions not possible
+- thus aim to find trade-off solutions of non-dominated points
+- we say a point dominates another
+  * if there is no other point strictly better in at least one dimension and better or equal in the remaining ones
+  * formally: $\boldsymbol\lambda$ dominates $\boldsymbol\lambda'$ ($\boldsymbol\lambda\prec\boldsymbol\lambda'$) if and only if
+    $\forall i\in\{1,...,m\}:c_i(\boldsymbol\lambda) \le c_i(\boldsymbol\lambda') \wedge \exists j\in\{1,...,m\}:c_j(\boldsymbol\lambda) < c_j(\boldsymbol\lambda')$
+  * \citep[pp. 7f]{10.1145/3610536} + \citep[pp. 198f]{genetic_algos}
+- Pareto set: set of nondominated points $\mathcal{P}:=\{\boldsymbol\lambda\in\Lambda|\nexists\boldsymbol\lambda'\in\Lambda\text{ s.t. }\boldsymbol\lambda'\prec\boldsymbol\lambda\}$
+- Pareto front: image of nondominated points
+- goal: find set of nondominated points $\hat{\mathcal{P}}$ approximating true Pareto set $\mathcal{P}$ well
 \subsubsection{A-priori}
 - requires specifying trade-off between objectives a-priori
 - simplest approach: different versions of \textbf{scalarization}
