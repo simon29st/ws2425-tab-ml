@@ -56,6 +56,8 @@
 
 \begin{abstract}%   <- trailing '%' for backward compatibility of .sty file
 %\blindtext
+- propose a network architecture specifically suited for the EAGGA algorithm
+- achieve comparable performance as training XGBoost with EAGGA
 \end{abstract}
 
 \begin{keywords}
@@ -464,6 +466,12 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 
 
 \section{Experimental Results and Discussion}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\linewidth]{../code/export/plot_test_dhvs.png}  % scale figure, cf. https://tex.stackexchange.com/a/16584
+  \caption{caption}
+  \label{fig-test-dhvs}
+\end{figure}
 
 
 \section{Conclusion and Future Outlook}
@@ -486,6 +494,22 @@ scikit-learn \cite{scikit-learn},
 scipy \cite{SciPy},
 pymoo \cite{pymoo}, and
 tqdm \cite{tqdm}
+
+\section{}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\linewidth]{../code/export/plot_early_stopping_losses_pareto_set.png}
+  \caption{caption}
+  \label{fig-es-losses}
+\end{figure}
+
+\section{}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\linewidth]{../code/export/plot_val_dhvs_over_time.png}
+  \caption{caption}
+  \label{fig-val-dhvs}
+\end{figure}
 
 \section{}
 \label{app:theorem}
