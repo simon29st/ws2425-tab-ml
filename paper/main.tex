@@ -432,7 +432,8 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     - NN
       * comprises of "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
       * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation with
-         binary cross entropy loss (sigmoid implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
+        (sigmoid implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
+      * loss is binary cross entropy loss, optimizer is AdamW with default params
     - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against of deep learning where model is supposed to decide itself,
       which feature to "use" / put importance on -> ELABORATE
     - feature interaction achieved by grouping, max-operation in ReLU induces interaction effect (different kind of interaction than e.g. in LM with multiplication)
@@ -455,11 +456,16 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       * if no early stopping, train each fold for max 10 minutes
       * then stop training, return model with lowest loss
     -> add graphic of entire dataset split
-    - then evaluate on last fold from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
+    - then evaluate on last remaining from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
+    - final evaluation of individuals of pareto set
+      * for each individual, train model on training set of hold-out for max \# of epochs taken during CV-training
+      * decided on max \# epochs instead of mean after looking at loss graphs in preliminary experiments, also refer Figure \ref{fig-es-losses}
+      * those show that there is no uptick in losses on the early stopping portion (disjunct from training portion) of the set, hence max reasonable
   * hardware: training on Sagemaker Notebook instance
     - initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
     using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
     - thus decided for more economic + ressourcen-schonend t3.medium
+  * did not train on philippine and gina datasets (308, 970 features, respectively), as they ran out of memory when computing interaction detectors
   * known bugs
     - in rare cases (anecdotally once every ~5-10 datasets), gga\_mutate seems to be generating -1 as monotonicity attribute, despite np.random.randint(low=0, high=2, size=1)
       * loop crashes at group\_structure creation, for these cases subtract previous runtime from 8hrs + load from last generation in output via load\_population
@@ -473,6 +479,23 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   \caption{caption}
   \label{fig-test-dhvs}
 \end{figure}
+- preliminary
+  * our implementation of feature + interaction detectors likely tend to include
+    - more features + interactions for high p datasets
+    - less for low p datasets
+    - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
+      is determined from fitting 10 trees + looking at relative \# of features used (cf. their github repo ~/R/TunerEAGGA.R function get\_n\_selected\_rpart())
+    -> mlr3 default decision tree max depth 30
+      * i.e. datasets with p < 30 likely use all features, which translates to trunc geom prob = 1
+      * vice-versa for p >> 30 datasets relative \# features < 0.5 (our trunc geom prob)
+      * similar reasoning for pairwise interactions
+  * individuals not in Pareto sets occassionally exhibit AUC < 0.5
+    - this is not by mistake, usually AUC on binary target can simply be inverted (simply predict the opposite class)
+    - this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constraint)
+    - could happen e.g. due to AdamW and weight clipping (employed to enforce monotonicity)
+      * AdamW uses momentum
+      * possible scenario: large momentum would yield negative weights, but after epoch they're clipped to [0,infty) + training stops due to early stopping
+      * weight clipping very imperfect way of enforcing monotonicity, but currently in pytorch unfortunately only way to implement this
 - Figure \ref{fig-test-dhvs} suggests comparable performance to XGBoost EAGGA
 - overview over pareto sets can be accessed on our github repo at ~/code/export/*.csv
   * NN HPs
@@ -507,16 +530,18 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     - but 5 different AUCs
     -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
   * artifacts / drops along y likely due to inconsistent computation of Pareto front by third-party library
-    - preliminary experiments on dummy pareto fronts: noticed nds function returning different rankings for same front
-    - returned ranking switched back and forth between two slightly different options (only 1 or 2 indices were swapped)
+    - preliminary experiments on dummy pareto fronts with 10x4 metrics: noticed nds function returning different rankings for same front
+    - returned ranking switched back and forth between two only slightly different options (only 1 or 2 indices were swapped)
     - not sure what caused this, as made same observation using another library that was planned as alternative
+    - thus unfortunately not fixable for me
   * all but 3 datasets (2 of which only trained for 1 generation, aynway) show improvement of dominated hypervolume over generations
-  * BUT: absolute as well as improvement almost negligible -> no large dhv drop would we just evaluate the models gotten from the detectors
+  * BUT: absolute as well as relative improvement almost negligible -> no large final dhv decrease would we just have evaluated the models gotten from the detectors
+    - this was also the reason we didn't run EAGGA on philippine and gina simply without the detectors (as that's where they crashed) -> evidence suggested that detectors are vital to initial performance
+    - original paper supports this assumption \citep[Fig. 4, p. 545]{EAGGA}
 
 
 \section{Conclusion and Future Outlook}
 - MO BO on group structure space possible?
-- here is a citation \cite{EAGGA}.
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
@@ -535,16 +560,15 @@ scipy \cite{SciPy},
 pymoo \cite{pymoo}, and
 tqdm \cite{tqdm}
 
-\section{}
+\section{Plots}
 \begin{figure}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_early_stopping_losses_pareto_set.png}
-  \caption{Pareto set loss of all datasets, evaluated on early stopping set. Same colours denote losses come from folds of the same individual.
+  \caption{Pareto set loss of all datasets, evaluated on early stopping set. Same colours denote losses coming from folds of the same individual.
             x-axis portrait epochs, y-axis binary cross entropy loss.}
   \label{fig-es-losses}
 \end{figure}
 
-\section{}
 \begin{figure}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_val_dhvs_over_time.png}
