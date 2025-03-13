@@ -4,7 +4,6 @@
 code/__pycache__/
 code/.venv/
 code/.ipynb_checkpoints/
-code/export/
 
 paper/
 !paper/jmlr2e.sty
