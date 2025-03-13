@@ -24,6 +24,9 @@
 \usepackage{jmlr2e}
 
 \usepackage{mathtools}
+\usepackage{amsmath}  % use argmin + argmax, cf. https://tex.stackexchange.com/a/5255
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
 \usepackage{bm}
 
 % Definitions of handy macros can go here
@@ -149,7 +152,21 @@ that in its fully-connected feedforwad form is inherently non-interpretable.
     - main challenge: what proxies
 
 \subsection{Hyperparameter Optimization (HPO)}
-- give intro to HPO = black-box optim problem -> we can apply any black box algo
+- in contrast to model parameters, which are optimised during training, hyperparameters are parameters describing the ML algo + are specified before training
+- still often have great impact on final (trained) model performance -> can be optimised too
+- formal definition
+  * dataset $\mathcal{D}\subseteq\mathcal{X}\times\mathcal{Y}$ consisting of $n$ tuples $(\boldsymbol{x}^{(i)}, y^{(i)})\stackrel{i.i.d.}{\sim}\mathbb{P}_{\boldsymbol{x}y}$
+    (data-generating distribution), i.e. $\mathcal{D}=\{(\boldsymbol{x}^{(i)}, y^{(i)})\}_{i=1}^n$
+  * ML algo $\mathcal{I}(\cdot,\boldsymbol\lambda)$ with HP config $\boldsymbol\lambda\in\Lambda$ maps dataset to fitted model
+    $f:\mathcal{X}\rightarrow\mathbb{R}^g\subseteq\mathcal{Y}$ (where $g\in\mathbb{N}$ is \# of classes of target),
+    i.e. $\mathcal{I}:(\mathbb{D}\times\Lambda)\rightarrow\mathcal{H}$, with $\mathbb{D}$ space of all finite datasets and $\mathcal{H}$ hypothesis space (space of all models $f$)
+  * denote $\mathcal{I}_{\boldsymbol\lambda}$ as (untrained) model with fixed HP config $\boldsymbol\lambda$
+  * loss function $L$
+  * goal of model training: for fixed $\boldsymbol\lambda$, have $\mathcal{I}$ find model $f$ minimising expected generalisation error
+    $GE(\mathcal{I},\boldsymbol\lambda,\mathcal{D},L)=\mathbb{E}_{(\boldsymbol{x},y)\sim\mathbb{P}_{\boldsymbol{x}y}}[L(y,\mathcal{I}_{\boldsymbol\lambda}(\mathcal{D})(\boldsymbol{x}))]$
+  * goal of HP optim: find $\boldsymbol\lambda$ minimising expected generalisation error, i.e. $\argmin_{\boldsymbol\lambda\in\Lambda} GE(\mathcal{I},\boldsymbol\lambda,\mathcal{D},L)$
+- \citep[p. 3]{10.1145/3610536}
+- HPO = black-box optim problem -> we can apply any black box algo to tune
 
 [model free]
 (grid + random search)
@@ -259,9 +276,16 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     % don't necessarily talk about co-adaptation problem
 
 \subsection{Multi-Objective Optimization}
-- intro MOO
+- in most practical use cases one doesn't just want to optimise for performance but e.g. also for interpretability using some proxy metrics
+- formal definition
 \subsubsection{Pareto-optimality}
 \subsubsection{A-priori}
+- requires specifying trade-off between objectives a-priori
+- simplest approach: different versions of \textbf{scalarization}
+  * weighted sum of objective functions
+    - $\min_{x\in\mathcal{X}} w_i f_i(x)$ with $\sum_{i=1}^k w_i=1$ and $w_i>0,\forall i=1,...,k$
+    - \citep[p. 11]{10.1145/3610536}
+  * Chebyshev: provably converges to Pareto front
 \subsubsection{A-posteriori}
 - problem a priori
   * either restrict search space to ``enforce our will'' (e.g. only use 50\% of features), optimise only prediction performance + use this
