@@ -319,10 +319,38 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * in practical applications, it is oftentimes useful to make the decision of which point of the Pareto set to use a-posteriori, e.g. if only a slight decrease in
     one objective translates to a significant improvement in another that would have been missed if the problem was optimised using a-priori methods
   * a-posteriori evaluates configs just as a-priori, but keeps track of multiple ``best'' (non-dominated) solutions -> makes relationship between HP config + objectives visible
-- NSGA-II (MOEA)
-  * non-dominated sorting
-  * crowding distance
-  -> give intuition why non-dom-sort (asc) + crowding dist (desc) makes sense for selecting individuals
+- aside from usualy baselines grid and random seach there are multi-objective BO adaptations, mainly using either of two approaches
+  (1) fit single surrogate model on scalarised objectives, e.g. ParEGO, which employs the augemented Tchebycheff function as scalarisation to ensure the Pareto front is
+      explored sufficiently \citep[pp. 15f]{10.1145/3610536} + \citep[pp. 54-56]{ParEGO}
+  (2) fit one surrogate per objective, then
+    - either one acquisition function per objective -> return set of promising next candidates
+    - or one overall acquisition function aggregating surrogates, e.g. EHI, maximises expected improvement of hypervolume \citep[p. 16]{10.1145/3610536} + \citep[pp. 8f]{EHI}
+- lastly, there is also multi-objective EA (MOEA) algorithms to explore Pareto front, one of which is NSGA-II (Nondominated Sorting Genetic Algorithm)
+  * improves upon predecessor NSGA \citep{NSGA} by making it parameterless, ensuring elitism, and reducing computational complexity of ranking of individuals \citep[p. 182]{NSGA_II}
+  * uses all the regular operators, i.e. reproduction, mutation, crossover can be used from single-objective EA (SOEA)
+  * difference to SOEA: ranking of individuals (SOEA uses scalar fitness, MOEA mutliple objectives)
+    - ranking mechanism based on 2 parts
+      * non-dominated sorting, ensures elitism
+        - iterative procedure to rank individuals in population by their fronts
+        (1) determine pareto front, assign rank 0
+        (2) remove pareto front from population
+        (3) if individuals left, repeat from 1, increment rank \#
+        - \citep[p. 201]{genetic_algos} + \citep[pp. 183f]{NSGA_II}
+      * crowding distance, ensures sufficient diversity, i.e. exploration of pareto front
+        - assigns score depending on how crowded area around individual in objective space is
+        - crowding distance of an individual = mean side length of cuboid spanned by its nearest neighbours as vertices in objective space
+        - individuals without two neighbour in any dimension are assigned infinitely high distance value
+        - \citep[p. 185]{NSGA_II}
+        -> the less the crowding distance, the more ``crowded'' an area is by other individuals
+      -> rank individuals by nds front rank (ascending) + crowding distance (descending) as tie breaker
+  * ranking used for selecting $\mu$ best individuals to keep for next generation + for reproduction: via binary tournament solution: select two random individuals,
+    pick best w.r.t. nds + cd for offspring creation (mutation / crossover)
+  * using nds for ranking / fitness makes intuitive sense, but why cd?
+    - goal of MOO: not simply optimise HV, but approx true Pareto front well
+    - only having individuals representing one area in objective space makes Pareto front estimate very ``unstable'': removing this area (i.e. solutions form that area)
+      would ``collapse'' entire front
+    - instead having multiple areas be represented makes the estimate ``stable'': removing one area wouldn't impact Pareto front estimate a lot
+    % TODO: reference?
 
 
 %likely shouldn't be an entire section
