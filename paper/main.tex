@@ -319,6 +319,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * again very dependent on user-defined priorisation
   * \citep[p. 13749]{lexicographic_MOO}  % TODO: perhaps find a different source more related to ML
 \subsubsection{A-posteriori}
+\label{sec-moo-post}
 - problem a priori
   * either restrict search space to ``enforce our will'' (e.g. only use 50\% of features), optimise only prediction performance + use this
   * or leave search space unrestricted but adjust loss function to incorporate multiple objectives + take optimum from there
@@ -430,8 +431,8 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       outperforming EAGGA on XGB (original paper), ..., this requires special architecture, etc. pp."
     - NN
       * comprises of "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
-      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation
-        (implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
+      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation with
+         binary cross entropy loss (sigmoid implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
     - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against of deep learning where model is supposed to decide itself,
       which feature to "use" / put importance on -> ELABORATE
     - feature interaction achieved by grouping, max-operation in ReLU induces interaction effect (different kind of interaction than e.g. in LM with multiplication)
@@ -472,6 +473,45 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   \caption{caption}
   \label{fig-test-dhvs}
 \end{figure}
+- Figure \ref{fig-test-dhvs} suggests comparable performance to XGBoost EAGGA
+- overview over pareto sets can be accessed on our github repo at ~/code/export/*.csv
+  * NN HPs
+    - total layers mostly 3-4, most commonly 3, goes as high as 7 (Satellite (36), diabetes (8))
+    - nodes per hidden layer mostly 3-6, goes as high as 12 (diabetes (8))
+    - p dropout goes as high as 0.7 (climate (18), spambase (57)), but mostly in the 0.1 to 0.3 range
+  * group structures
+    - great diversity in NF across datasets
+      * phoneme (5) up to 1
+      * blood (4) up to 1
+      * banknote (4) up to 0.75
+      * diabetes (8) up to 0.5
+      * climate (18) up to 0.67
+      -> low p datasets in the benchmark tend to have higher NF
+        - possible consequence of shorter evaluation time
+        - low p datasets have much higher \# generations
+        - group structure space much more likely to be exhausted, i.e. more exploration of NN hps
+    - NI, NNM consequently (bounded by NF, can never be more than max \# for respective \# included features) rather low low
+  * dhv contributions
+    - predominately low for fitted models
+    - mostly highest for featureless learner predicting majority class
+    -> sign of good exploration of pareto front + stable estimate, refer Section \ref{sec-moo-post}
+- loss graphs Figure \ref{fig-es-losses}
+  * suggests models could have benefitted from longer training on some datasets, as some loss curves haven't converged when stopping criterion hit
+  * crit was likely triggered by short-term spike, thus could potentially be resolved by comparing average of last k loss against average of >patience< losses prior
+    to that to not be as exposed to short-term spikes in loss
+  * on other datasets, graphs suggest earlier stop would have been totally fine as the networks have long converged, but longer training likely not an issue as loss
+    graphs come from early stopping dataset portion, which is disjunct from training set
+- dhv over generations Figure \ref{fig-val-dhvs}
+  * compute on val sett, i.e. had 5 folds per individual
+    - NF, NI, NNM always the same for each fold
+    - but 5 different AUCs
+    -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
+  * artifacts / drops along y likely due to inconsistent computation of Pareto front by third-party library
+    - preliminary experiments on dummy pareto fronts: noticed nds function returning different rankings for same front
+    - returned ranking switched back and forth between two slightly different options (only 1 or 2 indices were swapped)
+    - not sure what caused this, as made same observation using another library that was planned as alternative
+  * all but 3 datasets (2 of which only trained for 1 generation, aynway) show improvement of dominated hypervolume over generations
+  * BUT: absolute as well as improvement almost negligible -> no large dhv drop would we just evaluate the models gotten from the detectors
 
 
 \section{Conclusion and Future Outlook}
@@ -499,7 +539,8 @@ tqdm \cite{tqdm}
 \begin{figure}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_early_stopping_losses_pareto_set.png}
-  \caption{caption}
+  \caption{Pareto set loss of all datasets, evaluated on early stopping set. Same colours denote losses come from folds of the same individual.
+            x-axis portrait epochs, y-axis binary cross entropy loss.}
   \label{fig-es-losses}
 \end{figure}
 
@@ -507,7 +548,8 @@ tqdm \cite{tqdm}
 \begin{figure}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_val_dhvs_over_time.png}
-  \caption{caption}
+  \caption{Dominated hypervolume over generations, evaluated on validation set.
+            x-axis portrait generations, y-axis dominated hypervolume using mean AUC over folds.}
   \label{fig-val-dhvs}
 \end{figure}
 
