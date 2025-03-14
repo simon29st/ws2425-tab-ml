@@ -135,27 +135,29 @@ formally defined proxy for interpretability and is particularly useful in rankin
 (e.g. via human-grounded evaluation) to be interpretable. The main challenge for functionally-grounded evaluation is finding a good proxy.
 
 \subsection{Hyperparameter Optimization (HPO)}
-In contrast to model parameters, which are optimized during training, hyperparameters are those describing the machine learning algorithm and are fixed before training.
-Because they usually have a significant impact on the trained model's performance, hyperparameters are often optimized, too.
+In contrast to model parameters, which are optimized during training, hyperparameters (HPs) are those describing the machine learning algorithm and are fixed before training.
+Because they usually have a significant impact on the trained model's performance, HPs are often optimized, too.
 Let $\mathcal{D}\subseteq\mathcal{X}\times\mathcal{Y}$ be a dataset consisting of $n$
 tuples drawn from the data-generating distribution, i.e. $(\boldsymbol{x}^{(i)}, y^{(i)})\stackrel{i.i.d.}{\sim}\mathbb{P}_{\boldsymbol{x}y},\forall i=1,...,n$.
 Furthermore, let $\mathcal{I}:(\mathbb{D}\times\boldsymbol\Lambda)\rightarrow\mathcal{H}, (\mathcal{D},\boldsymbol\lambda)\mapsto\hat{f}$
-be an algorithm that maps a given dataset $\mathcal{D}$ and hyperparameter configuration $\boldsymbol\lambda\in\boldsymbol\Lambda$ to a model $\hat{f}$.
-Denote with $\mathcal{I}_{\boldsymbol\lambda}$ an algorithm with fixed hyperparameter configuration a chosen loss function with $L$.
+be an algorithm that maps a given dataset $\mathcal{D}$ and HP configuration $\boldsymbol\lambda\in\boldsymbol\Lambda$ to a model $\hat{f}$.
+Denote with $\mathcal{I}_{\boldsymbol\lambda}$ an algorithm with fixed HP configuration a chosen loss function with $L$.
 The goal of model training is, for fixed $\boldsymbol\lambda$, to have $\mathcal{I}_{\boldsymbol\lambda}$ find model $\hat{f}$ minimising the expected generalisation error
 $GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)=\mathbb{E}_{(\boldsymbol{x},y)\sim\mathbb{P}_{\boldsymbol{x}y}}[L(y,\mathcal{I}_{\boldsymbol\lambda}(\mathcal{D})(\boldsymbol{x}))]$
 The goal of HPO, on the other hand, is to find $\boldsymbol\lambda$ minimising the expected generalisation error,
 i.e. $\argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)$.
-For this there is no analytical expression available, making HPO a blackbox optimization problem.  \citep[pp. 2f]{10.1145/3610536}
+For this there is no analytical expression available, making HPO a blackbox optimization problem. \citep[pp. 2f]{10.1145/3610536}
 
-[model free]
-(grid + random search)
-- most basic strategy: grid search, for all HPs define range of interest, then evaluate cartesian product of those -> scales poorly in \# of HP dimensions + \# of query points per HP range
-- random search
-  * randomly sample value for each HP until it runs out of budget
-  * explorative: for budget $B$, each HP will (likely) be queried with $B$ different values, whereas grid search only $B^{1/N}$ for $N$ HPs
-  * thus better than grid in case of some HPs being non-informative (almost always the case), as it doesn't waste time specifically exploring these (as does grid)
-  * usually useful as baseline, as no assumptions about model, easy to parallelise, high exploration, and in expectation will ``achieve performance arbitrarily close to the optimum''
+We will first outline model-free methods to approach blackbox optimization problems, before presenting a model-based variant.
+
+% model free
+% grid + random search
+The most basic model-free strategies for blackbox optimization are grid and random search.
+In the latter, the user defines a range of interest for each HP and then evaluating points along a grid within the cartesian product of those.
+This has the drawback of scaling extremely poorly in both number of HP dimensions and number of query points per range of interest.
+Random search, on the other hand, randomly samples a value for each HP until it runs out of budget. Its explorative nature, ease of use, and no assumptions about the model
+makes it a good baseline. It is also superior to grid search in cases were one or more HPs have little impact on model performance, as for a given budget $B$,
+each HP will likely be queried with $B$ different values, whereas for grid search each HP will only be queried with $B^{1/N}$ different values for $N$ HPs.
 
 (evolutionary algorithms)
 - another model-free class of optimisation algorithms, inspired by naturally occuring evolution
