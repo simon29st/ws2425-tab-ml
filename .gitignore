@@ -10,3 +10,5 @@ paper/
 !paper/main.pdf
 !paper/main.tex
 !paper/references.bib
+!paper/architecture.png
+!paper/dataset_split.png
