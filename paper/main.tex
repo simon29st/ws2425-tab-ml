@@ -114,21 +114,16 @@ Amongst post-hoc techniques, we can further divide the space into model-specific
 
 % Taxonomy
 \citet[chap. 2]{survey_NN_interpretability} extend this distinction to a three-dimensional taxonomy, allowing for better categorisation of neural networks (NNs),
-a model class that in its fully-connected feedforwad form is inherently non-interpretable.
-- \textbf{Passive vs Active Approaches}
-  * passive: post-hoc
-  * active: changing architecture or training process to make model interpretable
-- \textbf{Type of Explanations}
-  * examples: providing examples of what leads to desired output
-  * attribution: attributing effect on output for a specific feature
-  * hidden semantics: examine what type of inputs specific neurons / layers pick up on
-  * rules: logical rules, e.g. if-then, trees
-- \textbf{Local vs Global Interpretability}
-  * local: explanation based on individual samples
-  * semi-local: explanation based on set of samples, e.g. grouped together by some criterion
-  * global: explaining network as a whole
+a model class that in its fully-connected feedforwad form is inherently non-interpretable.\\ % TODO: letztes halbsatz vllt lieber in intro unterbringen, hier ist der awkward und unnötig ausschmückend
+\textbf{Passive vs Active Approaches}, where \textit{passive} are all post-hoc methods and \textit{active} methods actively change either the architecture or
+training process to increase model interpretability.\\
+\textbf{Type of Explanations}, distinguishing between \textit{example} methods, providing concrete examples of what leads to a desired output, \textit{attribution}
+methods that attribute the effect on the output for a specific feature, \textit{hidden semantic} methods, which explain the types of inputs particular neurons or layers
+pick up on, and logical \textit{rules}, such as if-then clauses or tree-induced rules.\\
+\textbf{Local vs Global Interpretability}, ranging from \textit{local} methods providing explanations based on individual samples, \textit{semi-local} methods,
+explaining model behaviour for sets of samples grouped by some criterion, to \textit{global} methods, which explain the network as a whole.
 
-(Evaluation)
+% Evaluation
 - objective evaluation difficult, as no clear definition of interpretability
 - \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise possible evaluation methods
   * \textbf{application-grounded evaluation}
