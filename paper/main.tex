@@ -56,8 +56,10 @@
 
 \begin{abstract}%   <- trailing '%' for backward compatibility of .sty file
 %\blindtext
-- propose a network architecture specifically suited for the EAGGA algorithm
-- achieve comparable performance as training XGBoost with EAGGA
+- tabular data still difficult for NNs, where it's still outperformed by other ML model classes
+- research suggests NN performance benefits from heavy regularisation
+- using EAGGA, we regularise an NN and achieve both comparable performance as XGB on EAGGA as well as interpretability
+- for this, we propose a network architecture specifically suited for the EAGGA algorithm
 \end{abstract}
 
 \begin{keywords}
@@ -67,22 +69,21 @@
 \section{Introduction}
 Tabular Data
 - most common type of data
-- still difficult for neural networks  % TODO: reference, or better only in introduction
-- recent research suggests that heavy regularisation is necessary  % TODO: reference, or better only in introduction
+- still difficult for neural networks
+- \citep[p. 7499]{Borisov_2024}
+- recent research suggests that strong regularisation is beneficial to NN performance on tab data \citep[8]{NEURIPS2021_c902b497}
 
-regularisation
-- LM: ridge (L2) + lasso (L1)
-  * ridge: overcome multi-collinearity by pulling coeffs close to 0
-  * lasso: variable selection by setting coeffs = 0
-- NN:
-  * L2 regularisation implicitly included in SGD when using weight decay (pull params towards 0) -> does this combat multi-collinearity as well or serve another purpose?
-  * L1
-    + key claim of DL: feature selection obsolete, network finds important ones itself
-    + still, feature usually always has some impact (back this up), no explicit feature selection
-    + explicit feature selection simply by not inluding a feature
-  * another classical NN regularisation technique: dropout against co-adaptation
-  * early stopping against overfitting when using iterative method
--> all of those require specifying Hyperparameters in advance
+- we know regularisation from linear models can come with improvements in interpretabiltiy
+  * e.g. LM-LASSO (L1) regularisation as feature selection -> reduces \# features used in model by setting some coeffs to 0 \citep[p. 267]{lasso}
+- other forms of regularisation improve performance
+  * e.g. LM-Ridge (L2) on multi-collinear data \citep[p. 55]{ridge}  % TODO: mention in "extension" section that L2 is implemented via weight decay
+  * e.g. NN dropout, reduces co-adaptation \citep[p. 1]{hinton2012improvingneuralnetworkspreventing}
+  * e.g. NN early stopping, reduces overfitting on training data \citep[p. 778f]{early_stopping}
+
+- we want to explore if we can use NN regularisation to tackle both interpretability and improved performance (i.e. ``comparable'' to XGBoost) on tab data
+- using EAGGA framework, which proved it can improve performance while keeping (already high) performance of XGBoost on tab data -> see if interpretabiltiy
+  improvements translate to NN + performance can also be on par
+
 
 %\blindmathpaper
 
@@ -257,7 +258,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 \subsection{Neural Architecture Search (NAS)}
 - approaches specifically for NN HPO due to flexible structure of NNs and thus very large search space (each layer can have different \# nodes, different activations, for CNN different pooling, etc. operations)
 - we don't employ NAS for our extension as research focusses on the NLP and image domains, % TODO: find some more references
-  whose datasets exhibit strong correlation amongst features (i.e. tokens or pixels, respectively), an effect that is much weaker for tabular data \citep[p. 1]{Borisov_2024}
+  whose datasets exhibit strong correlation amongst features (i.e. tokens or pixels, respectively), an effect that is much weaker for tabular data \citep[p. 7499]{Borisov_2024}
 - at least want to give a little overview over most notable approaches
   * \textbf{cell search space}
     - modularise NN architecture into cells, NN as chain-structure of those

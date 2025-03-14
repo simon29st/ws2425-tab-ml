@@ -1,5 +1,3 @@
-% [1 Introduction]
-
 % cf https://github.com/sumny/eagga/ + https://dl.acm.org/doi/10.1145/3583131.3590380
 @inproceedings{EAGGA,
   author = {Schneider, Lennart and Bischl, Bernd and Thomas, Janek},
@@ -18,6 +16,82 @@
   location = {Lisbon, Portugal},
   series = {GECCO '23}
 }
+
+
+% [1 Introduction]
+
+@inproceedings{NEURIPS2021_c902b497,
+ author = {Kadra, Arlind and Lindauer, Marius and Hutter, Frank and Grabocka, Josif},
+ booktitle = {Advances in Neural Information Processing Systems},
+ editor = {M. Ranzato and A. Beygelzimer and Y. Dauphin and P.S. Liang and J. Wortman Vaughan},
+ pages = {23928--23941},
+ publisher = {Curran Associates, Inc.},
+ title = {Well-tuned Simple Nets Excel on Tabular Datasets},
+ url = {https://proceedings.neurips.cc/paper_files/paper/2021/file/c902b497eb972281fb5b4e206db38ee6-Paper.pdf},
+ volume = {34},
+ year = {2021}
+}
+
+
+@article{lasso,
+  author = {Tibshirani, Robert},
+  title = {Regression Shrinkage and Selection Via the Lasso},
+  journal = {Journal of the Royal Statistical Society: Series B (Methodological)},
+  volume = {58},
+  number = {1},
+  pages = {267-288},
+  year = {2018},
+  month = {12},
+  abstract = {We propose a new method for estimation in linear models. The ‘lasso’ minimizes the residual sum of squares subject to the sum of the absolute value of the coefficients being less than a constant. Because of the nature of this constraint it tends to produce some coefficients that are exactly 0 and hence gives interpretable models. Our simulation studies suggest that the lasso enjoys some of the favourable properties of both subset selection and ridge regression. It produces interpretable models like subset selection and exhibits the stability of ridge regression. There is also an interesting relationship with recent work in adaptive function estimation by Donoho and Johnstone. The lasso idea is quite general and can be applied in a variety of statistical models: extensions to generalized regression models and tree-based models are briefly described.},
+  issn = {0035-9246},
+  doi = {10.1111/j.2517-6161.1996.tb02080.x},
+  url = {https://doi.org/10.1111/j.2517-6161.1996.tb02080.x},
+}
+
+
+@article{ridge,
+ ISSN = {00401706},
+ URL = {http://www.jstor.org/stable/1267351},
+ abstract = {In multiple regression it is shown that parameter estimates based on minimum residual sum of squares have a high probability of being unsatisfactory, if not incorrect, if the prediction vectors are not orthogonal. Proposed is an estimation procedure based on adding small positive quantities to the diagonal of X′X. Introduced is the ridge trace, a method for showing in two dimensions the effects of nonorthogonality. It is then shown how to augment X′X to obtain biased estimates with smaller mean square error.},
+ author = {Arthur E. Hoerl and Robert W. Kennard},
+ journal = {Technometrics},
+ number = {1},
+ pages = {55--67},
+ publisher = {[Taylor & Francis, Ltd., American Statistical Association, American Society for Quality]},
+ title = {Ridge Regression: Biased Estimation for Nonorthogonal Problems},
+ urldate = {2025-03-13},
+ volume = {12},
+ year = {1970}
+}
+
+
+
+@misc{hinton2012improvingneuralnetworkspreventing,
+  title={Improving neural networks by preventing co-adaptation of feature detectors}, 
+  author={Geoffrey E. Hinton and Nitish Srivastava and Alex Krizhevsky and Ilya Sutskever and Ruslan R. Salakhutdinov},
+  year={2012},
+  eprint={1207.0580},
+  archivePrefix={arXiv},
+  primaryClass={cs.NE},
+  url={https://arxiv.org/abs/1207.0580}, 
+}
+
+
+@article{early_stopping,
+  title = {Improving model selection by nonconvergent methods},
+  journal = {Neural Networks},
+  volume = {6},
+  number = {6},
+  pages = {771-783},
+  year = {1993},
+  issn = {0893-6080},
+  doi = {https://doi.org/10.1016/S0893-6080(05)80122-4},
+  url = {https://www.sciencedirect.com/science/article/pii/S0893608005801224},
+  author = {William Finnoff and Ferdinand Hergert and Hans Georg Zimmermann},
+  keywords = {Model selection, Generalization, Weight pruning, Penalty terms, Cross-validation, Nonconvergent training, Dynamic topology modifications},
+  abstract = {Many techniques for model selection in the field of neural networks correspond to well established statistical methods. For example, architecture modifications based on test variables calculated after convergence of the training process can be viewed as part of a hypothesis testing search, and the use of complexity penalty terms is essentially a type of regularization or biased regression. The method of “stopped” or “cross-validation” training, on the other hand, in which an oversized network is trained until the error on a further validation set of examples deteriorates, then training is stopped, is a true innovation since model selection doesn't require convergence of the training process. Here, the training process is used to perform a directed search of the parameter space for a model which doesn't overfit the data and thus demonstrates superior generalization performance. In this paper we show that this performance can be significantly enhanced by expanding the “nonconvergent method” of stopped training to include dynamic topology modifications (dynamic weight pruning) and modified complexity penalty term methods in which the weighting of the penalty term is adjusted during the training process. On an extensive sequence of simulation examples we demonstrate the general superiority of the “extended” nonconvergent methods compared to classical penalty term methods, simple stopped training, and methods which only vary the number of hidden units.}
+}
+
 
 
 % [2 Background and Related Work]
