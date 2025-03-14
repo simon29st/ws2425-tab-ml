@@ -90,7 +90,6 @@ Tabular Data
 
 \section{Background and Related Works}
 
-% feels better in front of AutoML, as it feels more qualitative, less quantitative
 \subsection{Interpretability}
 As there is no clear definition for interpretability, we will consider it as ``the ability to provide \textit{explanations} in \textit{understandable terms} to a human'',
 where \textit{explanations} are logical decision rules and \textit{understandable terms} relate to commonly used terms in the domain of the problem,
@@ -124,24 +123,16 @@ pick up on, and logical \textit{rules}, such as if-then clauses or tree-induced 
 explaining model behaviour for sets of samples grouped by some criterion, to \textit{global} methods, which explain the network as a whole.
 
 % Evaluation
-- objective evaluation difficult, as no clear definition of interpretability
-- \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise possible evaluation methods
-  * \textbf{application-grounded evaluation}
-    - most rigorous method, also most expensive + time consuming
-    - idea: evaluate ``interpretability model'' directly w.r.t. the task -> human experts evaluate the outcome
-    - e.g.: model performing medical diagnosis on patients would be evaluated based on doctors doing the same
-  * \textbf{human-grounded metrics}
-    - similar to application-grounded, but tries to simplify task (while preserving its essence) so that laypersons can do it
-    - cheaper due to larger, less qualified subject pool
-    - especially suitable if only general concepts of the tasks need to be validated
-    - examples for evaluation set-up
-      * binary forced choice: human evaluator chooses which of two explanations he finds better
-      * forward simulation: evaluator must correctly simulate model output when presented model input + explanation % TODO: perhaps binary forced choice is already enough to include, this (and the third one is a bit awkward to explain why this is good for interpretability imo)
-  * \textbf{functionally-grounded evaluation}
-    - assess explanation quality via some formally defined proxy for interpretability
-    - no human time nor cost required beyond initial formulation of proxy
-    - e.g. if we already have an interpretable model class (e.g. identified via human-grounded evaluation), can then rank different models of that class based on proxy
-    - main challenge: what proxies
+Given its unclear definition, evaluating interpretability can be challenging. \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise
+possible evaluation methods based on their rigorousness.\\
+\textbf{Application-grounded evaluation} evaluates interpretations directly with respect to the task, by having human experts evaluate the outcome and
+is therefore the most expensive and time-consuming of the three approaches.\\
+\textbf{Human-grounded metrics} is similar to application-grounded evaluation in that a human still evaluates the interpretations, but tries to simplify the task
+so that a layperson can do it. Human-grounded approaches are especially suitable if it's sufficient to validate the general concepts of a task. A typical evaluation
+set-up in this category is binary forced choice, where the human evaluator chooses, which of two generated explanations he prefers.\\
+\textbf{Functionally-grounded evaluation} is the least rigorous, but easiest to implement of the three. It assess explanatory quality according to some
+formally defined proxy for interpretability and is particularly useful in ranking different models if their model-class is already identified
+(e.g. via human-grounded evaluation) to be interpretable. The main challenge for functionally-grounded evaluation is finding a good proxy.
 
 \subsection{Hyperparameter Optimization (HPO)}
 - in contrast to model parameters, which are optimised during training, hyperparameters are parameters describing the ML algo + are specified before training
