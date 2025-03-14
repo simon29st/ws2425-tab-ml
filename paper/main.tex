@@ -146,7 +146,7 @@ The goal of model training is, for fixed $\boldsymbol\lambda$, to have $\mathcal
 $GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)=\mathbb{E}_{(\boldsymbol{x},y)\sim\mathbb{P}_{\boldsymbol{x}y}}[L(y,\mathcal{I}_{\boldsymbol\lambda}(\mathcal{D})(\boldsymbol{x}))]$
 The goal of HPO, on the other hand, is to find $\boldsymbol\lambda$ minimising the expected generalisation error,
 i.e. $\argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)$.
-For this there is no analytical expression available, making HPO a blackbox optimization problem. \citep[pp. 2f]{10.1145/3610536}
+For this, there is no analytical expression available, making HPO a blackbox optimization problem. \citep[pp. 2f]{10.1145/3610536}
 
 We will first outline model-free methods to approach blackbox optimization problems, before presenting a model-based variant.
 
@@ -165,7 +165,7 @@ Another popular class of model-free optimizers are evolutionary algorithms (EAs)
 given appropriate implementation of operators.
 EAs are iteratively evolving a population of individuals (an individual is simply a hyperparameter configuration) of size $\mu$, where in each iteration (generation),
 $\lambda$\footnote{We distinguish between $\lambda\in\mathbb{N}$ when referring to the offspring size of EAs and $\boldsymbol\lambda\in\boldsymbol\Lambda$ when
-referring to a hyperparameter configuration.} offspring are generated via three operators \citep[pp. 10-TODO]{genetic_algos}.\\
+referring to a hyperparameter configuration.} offspring are generated via three operators \citep[pp. 10-14]{genetic_algos}.\\
 \textbf{Reproduction} samples an individual from the population to reproduce with probability proportional to its fitnes. For HPO, fitness usually refers to the
 performance metric the model resulting from the individual's HP configuration is evaluated on.\\
 \textbf{Crossover} selects two ``parents'' from the pool of reproducing individuals. An index $k$ is sampled at random and all HP values from
@@ -176,41 +176,24 @@ At the end of each generation, the EA keeps the best $\mu$ individuals, either o
 population and offspring (``$(\mu+\lambda)$-selection''), which is also called an ``elitist'' strategy, as it's guaranteed to keep the best individual.
 \citep[chap. 1.3]{feurer_hyperparameter_2019}
 
-%- another model-free class of optimisation algorithms, inspired by naturally occuring evolution
-%- based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
-%  * \textbf{reproduction}: pick an individual to reproduce with prob proportional to its fitness
-%  * \textbf{crossover}
-%    - select 2 ``parents'' from pool of reproducing individuals
-%    - for a position $k$ in their HP configs, with certain prob, swap their values after position $k$, yielding 2 new children
-    % TODO: use example from book page 12
-%  * \textbf{mutation}: with certain prob, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
-%- selection at end of each genertion: keep $\mu$ best individuals (based on some fitness function), either from only offspring (``$(\mu,\lambda)$-selection'')
-%  or (more commonly) from population + offspring (``$(\mu+\lambda)$-selection'', guaranteed to keep best individual)
-%- pro: conceptually simple + can handle even complex parameter spaces (continuous, discrete, hierarchical, etc.) given appropriate implementation of operators
-- prominent examples
-  * CMA-ES
-    - ``Covariance Matrix Adapation Evolution Strategy''
-    - offspring generation exclusively via multivariate normal \citep[p. 8]{hansen2023cmaevolutionstrategytutorial}
-      * mean = weighted average of previous generation
-      * covariance = weighted covariance of previous generation, with weighting as for mean
-    - weighing scheme done to sample in a way as to reproduce previously successful (i.e. selected) steps \citep[p. 11]{hansen2023cmaevolutionstrategytutorial}
-  * differential evolution \citep[-]{differential_evolution}
-    - init population randomly so that entire param space is covered
-      * $D$-dim vectors $\boldsymbol{x}_{i,G}$ with $i=1,2,...,n$ for gen $G$
-    - mutation
-      * for each $\boldsymbol{x}_{i,G}$, generate \textbf{mutant vector} $\boldsymbol{v}_{i,G+1}=\boldsymbol{x}_{r_1,G}+F\cdot(\boldsymbol{x}_{r_2,G}-\boldsymbol{x}_{r_3,G})$
-      * $r_1,r_2,r_3\in\{1,2,...,n\}$ mutually different random idx + different from $i$
-      * constant $F\in[0,2]$
-    - crossover
-      * \textbf{trial vector} $\boldsymbol{u}_{i,G+1}=(u_{i,G+1}^{(1)},u_{i,G+1}^{(2)},...,u_{i,G+1}^{(D)})$
-        - chose random index $R\in\{1,2,...,D\}$
-        - sample $p\sim U[0,1]$
-        - define crossover constant $\text{CR}\in[0,1]$
-        - $u_{i,G+1} = \begin{dcases}
-          v_{i,G+1}^{(j)} & \text{if } p\le\text{CR}\text{ or } j=R \\
-          x_{i,G}^{(j)} & \text{else}
-         \end{dcases}$
-    - selection: greedy, compare fitness of $\boldsymbol{u}_{i,G+1}$ with $\boldsymbol{x}_{i,G}$, pick better
+One of the most popular EA implementations is the ``Covariance Matrix Adaptation Evolution Strategy'' (CMA-ES).
+It employs a multivariate normal distribution to generate offspring, for which the mean is a weighted average of the previous generation's individuals
+and the covariance matrix similarly is the weighted covariance of the previous generation.
+The weighing scheme for both is done in a way as to reproduce previously successful (i.e. selected) steps \citep[p. 8-11]{hansen2023cmaevolutionstrategytutorial}.
+
+Another popular EA approach is Differential Evolution. Its populaton is randomly initialised so the entire search space is covered.
+In each generation $g$, for each $\boldsymbol\lambda_{i,g}$ with $i=1,...,n$ it creates ``mutant vectors''
+$\boldsymbol\nu_{i,g+1}=\boldsymbol\lambda_{r_1,g}+F\cdot(\boldsymbol\lambda_{r_2,g}-\boldsymbol\lambda_{r_3,g})$,
+where $r_1,r_2,r_3\in\{1,...,n\}$ are mutually different random indices that also different from $i$ and $F\in[0,2]$ is constant.
+For crossover, it then generates a ``trial vector'' $\boldsymbol\upsilon_{i,g+1}=(\upsilon_{i,g+1}^{(1)},\upsilon_{i,g+1}^{(2)},...,\upsilon_{i,g+1}^{(N)})$ with
+\begin{equation}
+  \upsilon_{i,g+1}^{(j)} = \begin{dcases}
+    \nu_{i,g+1}^{(j)} & \text{if } p\le\text{CR}\text{ or } j=R \\
+    \lambda_{i,g}^{(j)} & \text{else}
+  \end{dcases}
+\end{equation}
+for a random index $R\in\{1,2,...,D\}$, sampled $p\sim U[0,1]$, and crossover constant $\text{CR}\in[0,1]$.
+Selection is done by picking the better of $\boldsymbol\upsilon_{i,g+1}$ and $\boldsymbol\lambda_{i,g}$ with respect to fitness. \citep[p. 343]{differential_evolution}
 
 [model based]
 - contrast to model free, fit a surrogate model on blackbox problem + optimise this
