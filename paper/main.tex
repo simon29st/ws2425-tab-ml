@@ -94,34 +94,27 @@ Tabular Data
 \subsection{Interpretability}
 As there is no clear definition for interpretability, we will consider it as ``the ability to provide \textit{explanations} in \textit{understandable terms} to a human'',
 where \textit{explanations} are logical decision rules and \textit{understandable terms} relate to commonly used terms in the domain of the problem,
-as suggested by \citet[chap. 1]{survey_NN_interpretability}.
-Further, we use the term ``explanability'' in an exchangeable manner with ``interpretability'', as is commonly done.
+as suggested by \citet[chap. 1]{survey_NN_interpretability}. Further, we use the term ``explainability'' in an exchangeable manner with ``interpretability'',
+as is commonly done.
 
-(Why Interpretability is desirable?)
-- in many ways desirable, as per \citet[pp. 3-4]{Zach2019InterpretabilityOD}, e.g.
-  * \textbf{gaining trust}: most notable use case, e.g. medical diagnosis: predictions need to be validated by doctors \citep[p. 1]{review_NN_interpretability}
-  * \textbf{model debugging}
-    - model is optimised w.r.t. loss and judged on accuracy
-    - might have unexpected performance drops in certain situations, makes model unreliable \citep[1B]{survey_NN_interpretability}
-    - having an interpretable model + model induction process can help find ways to improve accuracy + reliability
-  * \textbf{scientific understanding}: when only models can make sense of increasingly complex data anymore, interpretability enables extraction of learnt knowledge encoded
-    in the model to make it accessible + reliable to humans (also mentioned here \citep[p. 1]{review_NN_interpretability})
-  * \textbf{subconcious bias}, e.g. loan approval: must ensure that decision is not discriminatory
-  * \textbf{regulatory}
-    - such as EU's "Right to Explanation" warranted by the GDPR \citep[p. 1]{review_NN_interpretability}, \citep[1B]{survey_NN_interpretability} or
-    - drug approval processes in situations where a machine learning model discovered a new drug, process needs to be transparent for the regulator to approve \citep[1B]{survey_NN_interpretability}
+% Why Interpretability is desirable?
+Explainability of a model's reasoning is in many ways desirable. \citet[pp. 3-4]{Zach2019InterpretabilityOD} gives a range of examples,
+amongst which are \textit{gaining trust}, e.g. when doctors rely on medical diagnosis predictions, avoiding \textit{subconcious biases} by
+making sure loan approvals are non-discriminatory, or \textit{regulatory} reasons, most notably the EU's ``Right to Explanation'' warranted by the
+GDPR \citep[p. 1]{review_NN_interpretability} or for approval of drugs discovered using machine learning models \citep[1B]{survey_NN_interpretability}.
+It can further prove helpful for explaining unexpected drops in model performance, which could arise from optimising a model with respect to loss and then judging its
+performance on a different metric such as accuracy, a practice known as \textit{model debugging} \citep[1B]{survey_NN_interpretability} or for
+\textit{scientific understanding} in domains where only models can make sense of increasingly complex data anymore and learnt knowledge encoded in a model needs to be
+made accessible to humans to be used reliably \citep[p. 1]{review_NN_interpretability}.
 
 Commonly, methods for model interpretation are divided into intrinsic methods, where the search space only comprises models with a structure simple enough to be
 considered ``explainable'' (such as tree-based or simple linear models), and post-hoc methods, where interpretation methods are applied after model training.
 Amongst post-hoc techniques, we can further divide the space into model-specific (such as analysing GLM coefficients) and model-agnostic
-(e.g. partial depence plots, ALE) methods. \citet[chap. 3.2]{molnar2022}
+(e.g. partial depence plots, ALE) methods \citep[chap. 3.2]{molnar2022}.
 
-(Taxonomy)
-\citet[chap. 2]{survey_NN_interpretability} extend this distinction to a 3-dimensional taxonomy, allowing for better categorisation of neural networks (NN), a model class
-that in its fully-connected feedforwad form is inherently non-interpretable.
-% alternative formulation
-%As fully-connected feedforward neural networks (NNs) are inherently non-interpretable models, the taxonomy introduced by \citet[chap. 2]{survey_NN_interpretability} proves
-%particulary useful to categorise NN explanability methods along 3 dimensions:
+% Taxonomy
+\citet[chap. 2]{survey_NN_interpretability} extend this distinction to a three-dimensional taxonomy, allowing for better categorisation of neural networks (NNs),
+a model class that in its fully-connected feedforwad form is inherently non-interpretable.
 - \textbf{Passive vs Active Approaches}
   * passive: post-hoc
   * active: changing architecture or training process to make model interpretable
@@ -141,7 +134,7 @@ that in its fully-connected feedforwad form is inherently non-interpretable.
   * \textbf{application-grounded evaluation}
     - most rigorous method, also most expensive + time consuming
     - idea: evaluate ``interpretability model'' directly w.r.t. the task -> human experts evaluate the outcome
-    - e.g.: model performing medical diagnosis on patients would be evaluated by based on doctors doing the same
+    - e.g.: model performing medical diagnosis on patients would be evaluated based on doctors doing the same
   * \textbf{human-grounded metrics}
     - similar to application-grounded, but tries to simplify task (while preserving its essence) so that laypersons can do it
     - cheaper due to larger, less qualified subject pool
@@ -184,12 +177,12 @@ that in its fully-connected feedforwad form is inherently non-interpretable.
 (evolutionary algorithms)
 - another model-free class of optimisation algorithms, inspired by naturally occuring evolution
 - based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
-  * \textbf{reproduction}: pick an individual to reproduce with p proportional to its fitness
+  * \textbf{reproduction}: pick an individual to reproduce with prob proportional to its fitness
   * \textbf{crossover}
     - select 2 ``parents'' from pool of reproducing individuals
-    - for a position $k$ in their HP configs, with certain p, swap their values after $k$, yielding 2 children
+    - for a position $k$ in their HP configs, with certain prob, swap their values after position $k$, yielding 2 new children
     % TODO: use example from book page 12
-  * \textbf{mutation}: with certain p, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
+  * \textbf{mutation}: with certain prob, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
 - selection at end of each genertion: keep $\mu$ best individuals (based on some fitness function), either from only offspring (``$(\mu,\lambda)$-selection'')
   or (more commonly) from population + offspring (``$(\mu+\lambda)$-selection'', guaranteed to keep best individual)
 - pro: conceptually simple + can handle even complex parameter spaces (continuous, discrete, hierarchical, etc.) given appropriate implementation of operators
@@ -259,7 +252,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 - approaches specifically for NN HPO due to flexible structure of NNs and thus very large search space (each layer can have different \# nodes, different activations, for CNN different pooling, etc. operations)
 - we don't employ NAS for our extension as research focusses on the NLP and image domains, % TODO: find some more references
   whose datasets exhibit strong correlation amongst features (i.e. tokens or pixels, respectively), an effect that is much weaker for tabular data \citep[p. 7499]{Borisov_2024}
-- at least want to give a little overview over most notable approaches
+- at least want to give a little outline on most notable approaches
   * \textbf{cell search space}
     - modularise NN architecture into cells, NN as chain-structure of those
     - cell = basic building block, fixed component of an NN
@@ -272,7 +265,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     - \citep[chap. 3.2]{elsken_neural_2019}
   * \textbf{one-shot model}
     - trains one overall ``fabric'' comprising all architectures of search space
-    - visualisation as DAG, nodes are nodes, edges in-between are operations on a node
+    - visualisation as DAG, nodes are layers, edges in-between are operations on a layer's values
     - each path through DAG (from input to output node) represents one architecture of search space -> train entire DAG, then pick optimal path (architecture)
     - pro: very efficient training, individual architectures share operations along edges they share, training one-shot model trains all subsumed models (more expensive
       than training a single model but less expensive than trying out all configurations included in the fabric)
@@ -288,7 +281,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 \subsubsection{Pareto-optimality}
 - problem: usually conflicting objectives, i.e. minimisation of $\boldsymbol{c}$ not possible along all dimensions
 - thus aim to find trade-off solutions of non-dominated points
-- we say a point dominates another
+- we say a ``point dominates another''
   * if there is no other point strictly better in at least one dimension and better or equal in the remaining ones
   * formally: $\boldsymbol\lambda$ dominates $\boldsymbol\lambda'$ ($\boldsymbol\lambda\prec\boldsymbol\lambda'$) if and only if
     $\forall i\in\{1,...,m\}:c_i(\boldsymbol\lambda) \le c_i(\boldsymbol\lambda') \wedge \exists j\in\{1,...,m\}:c_j(\boldsymbol\lambda) < c_j(\boldsymbol\lambda')$
@@ -299,7 +292,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 (evaluation)
 - if knowledge over true Pareto-front, evaluating set of individuals can be done based on distance of estimated to true Pareto front
 - if no knowledge over true Pareto-front, volume-based approaches are popular, which measure volume between Pareto front estim and some chosen
-  reference point (usually worst point in objective space)
+  reference point (usually worst point in objective space), e.g. 0 for accuracy (optimum is 1)
 - \citep[pp. 8-10]{10.1145/3610536}
 \subsubsection{A-priori}
 - requires specifying trade-off between objectives a-priori, will outline 2 popular approaches
@@ -311,12 +304,12 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       * different users might have different opinions on weights \citep[chap. 3.1]{NSGA}
     - \citep[p. 11]{10.1145/3610536}
   * $\epsilon$-constraint
-    - translate all but one objective into constraint, then optimise remaining objective under subject to the constraints
+    - translate all but one objective into constraint, then optimise remaining objective subject to the constraints
     - $\text{w.l.o.g.} \argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} c_1(\boldsymbol\lambda) \text{ s.t. } c_2(\boldsymbol\lambda)\le\epsilon_2,...,c_m(\boldsymbol\lambda)\le\epsilon_m$
     - conceputally similar to weighted sum: also sensitive to constraints, must be chosen sensibly
     - \citep[p. 12]{10.1145/3610536}
 - \textbf{lexicographic method}
-  * define priorisation of objectives
+  * define priority of objectives
   * greedily optimise objectives in order of priority, constraint to the solutions of the already optimised (higher-priority) objectives
   * again very dependent on user-defined priorisation
   * \citep[p. 13749]{lexicographic_MOO}  % TODO: perhaps find a different source more related to ML
@@ -329,32 +322,32 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * in practical applications, it is oftentimes useful to make the decision of which point of the Pareto set to use a-posteriori, e.g. if only a slight decrease in
     one objective translates to a significant improvement in another that would have been missed if the problem was optimised using a-priori methods
   * a-posteriori evaluates configs just as a-priori, but keeps track of multiple ``best'' (non-dominated) solutions -> makes relationship between HP config + objectives visible
-- aside from usualy baselines grid and random seach there are multi-objective BO adaptations, mainly using either of two approaches
+- aside from usual baselines grid and random seach there are multi-objective BO adaptations, mainly using either of two approaches
   (1) fit single surrogate model on scalarised objectives, e.g. ParEGO, which employs the augemented Tchebycheff function as scalarisation to ensure the Pareto front is
       explored sufficiently \citep[pp. 15f]{10.1145/3610536} + \citep[pp. 54-56]{ParEGO}
   (2) fit one surrogate per objective, then
     - either one acquisition function per objective -> return set of promising next candidates
-    - or one overall acquisition function aggregating surrogates, e.g. EHI, maximises expected improvement of hypervolume \citep[p. 16]{10.1145/3610536} + \citep[pp. 8f]{EHI}
+    - or one overall acquisition function aggregating surrogates, e.g. \textit{EHI}, maximises expected improvement of hypervolume \citep[p. 16]{10.1145/3610536} + \citep[pp. 8f]{EHI}
 - lastly, there is also multi-objective EA (MOEA) algorithms to explore Pareto front, one of which is NSGA-II (Nondominated Sorting Genetic Algorithm)
   * improves upon predecessor NSGA \citep{NSGA} by making it parameterless, ensuring elitism, and reducing computational complexity of ranking of individuals \citep[p. 182]{NSGA_II}
   * uses all the regular operators, i.e. reproduction, mutation, crossover can be used from single-objective EA (SOEA)
   * difference to SOEA: ranking of individuals (SOEA uses scalar fitness, MOEA mutliple objectives)
-    - ranking mechanism based on 2 parts
+    - multi-objective ranking mechanism based on 2 parts
       * non-dominated sorting, ensures elitism
         - iterative procedure to rank individuals in population by their fronts
         (1) determine pareto front, assign rank 0
         (2) remove pareto front from population
-        (3) if individuals left, repeat from 1, increment rank \#
+        (3) if any individuals left, repeat from 1, increment rank \#
         - \citep[p. 201]{genetic_algos} + \citep[pp. 183f]{NSGA_II}
       * crowding distance, ensures sufficient diversity, i.e. exploration of pareto front
         - assigns score depending on how crowded area around individual in objective space is
         - crowding distance of an individual = mean side length of cuboid spanned by its nearest neighbours as vertices in objective space
-        - individuals without two neighbour in any dimension are assigned infinitely high distance value
+        - individuals without two neighbours in a dimension are assigned infinitely high distance value
         - \citep[p. 185]{NSGA_II}
         -> the less the crowding distance, the more ``crowded'' an area is by other individuals
       -> rank individuals by nds front rank (ascending) + crowding distance (descending) as tie breaker
-  * ranking used for selecting $\mu$ best individuals to keep for next generation + for reproduction: via binary tournament solution: select two random individuals,
-    pick best w.r.t. nds + cd for offspring creation (mutation / crossover)
+  * ranking used for selecting $\mu$ best individuals to keep for next generation + for reproduction: via binary tournament selection: select two random individuals,
+    pick best w.r.t. nds + cd for offspring creation (i.e. mutation / crossover)
   * using nds for ranking / fitness makes intuitive sense, but why cd?
     - goal of MOO: not simply optimise HV, but approx true Pareto front well
     - only having individuals representing one area in objective space makes Pareto front estimate very ``unstable'': removing this area (i.e. solutions form that area)
@@ -370,7 +363,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * NF: rel. \# of features used in model
   * NI: rel. \# of pairwise feature interaction effects
   * NNM: rel. \# of non-monotone feature effects
-- aims to find high performing models (AUC) with low NF, low NI, and NNM -> ensures better interpretability than simply optimising for performance
+- aims to find high performing models (AUC) with low NF, NI, and NNM -> ensures better interpretability than simply optimising for performance
   but creates very large objective space $\check{\boldsymbol\Lambda}$ to be optimised over with
   tuples $(\boldsymbol\lambda, \boldsymbol{s}, \boldsymbol{I}_s, \boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}})=\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}$
   with
@@ -382,13 +375,13 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 - \citep[pp. 540f]{EAGGA}
 - introduces equivalence relation $R$ ``allowed to interact'' on features that significantly reduces search space for more efficient optimization
 - thus: augmented search space $\tilde{\boldsymbol\Lambda}=\boldsymbol\Lambda\times\mathcal{G}$ comprising model HP space and group structure space
-  * each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups
+  * each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups:
     - $G_1$ set of excluded features
     - $\forall k=2,...,g:G_k=(E_k,M_{E_k})$ tuple
       * $E_k$ set of features allowed to interact with each other
       * $M_{E_k}$ monotonicity constraint of entire group $k$
 - EA on model hyperparameters $\boldsymbol\Lambda$
-- GGA on group structure space $\mathcal{G}$
+- GGA on group structure space $\mathcal{G}$ with adapted mutation and crossover operators
 - \citep[pp. 541f]{EAGGA}
 - futher introduces special initialisation of group structures to increase sample-efficiency of EAGGA algorithm compared to random init
 - \citep[pp. 542f]{EAGGA}
@@ -403,30 +396,31 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
   * no monotonicity guarantees
 - our approach
   (general algorithm)
-  * EAGGA algorithm implemented just as described in the paper
+  * EAGGA algorithm implemented largely as described in the paper
   * HP init
-    - NN total layers $\in\{3, ..., 10\}$, i.e. hidden layers $\in\{1, ..., 8\}$, init from trunc geom with p=0.5
-    - NN nodes per hidden layer (for each group) $\in\{3, ..., 20\}$, init from trunc geom with p=0.5
+    - NN total layers $\in\{3, ..., 10\}$, i.e. hidden layers $\in\{1, ..., 8\}$, init from trunc geom with prob=0.5
+    - NN nodes per hidden layer (for each group) $\in\{3, ..., 20\}$, init from trunc geom with prob=0.5
     - NN dropout \% $\in[0, 1]$, init from trunc gamma with shape=2, scale=0.15
   * group structure init
     - feature detector
       * as described in paper
-      * but instead of fitting 10 trees + taking rel. \# of features used as p for trunc geom, we simply use 0.5 (sklearn dectree examination not straightforward)
+      * but instead of fitting 10 trees + taking rel. \# of features used as prob for trunc geom, we simply use 0.5 (sklearn dectree examination not straightforward)
       * also in preliminary experiments we found the sampled \# of features to be used occassionally to be > \# of non-0 values in normalised information gain filter
-        (e.g. if former is = total \# of features and one feature is indep. from target) in these edge cases we only use the features with non-0 filter values
+        (e.g. if former is = total \# of features and one feature is indep. from target) in these edge cases we simply use all features with non-0 filter values
     - interaction detector
       * as described in paper
-      * same as for feat detect: use p=0.5 to sample \# of interactions used instead of 10 dec trees
+      * same as for feat detect: use prob=0.5 to sample \# of interactions used instead of 10 dec trees
       * also for FAST algorithm don't use RSS (lin reg metric) but mean accuracy, as we fit log reg
     - monotonicity detector
       * as described in paper
-      * use default HPs (max depth 30, minsplie = 20) of mlr3 classification tree implementation, as this is the library the paper uses
+      * use default HPs (max depth 30, minsplit = 20) of mlr3 classification tree implementation, as this is the library the paper uses
     -> both interaction + monotonicity detectors fit their models on 80\% of train split from holdout + eval on remaining 20\%
   (implementation details)
   * group structures + datasets
     - group structures implemented as described in the paper with additional list encoding sign of monotonicity of the individual features as detected by the
       monotonicity detector
-    - included features are passed to dataset, dataset outputs included features, multiplied by the features' individual monotonicity (-1 / 1)
+    - included features are passed to dataset, dataset outputs included features, multiplied by the features' individual monotonicity (-1 / 1), so that group monotonicity
+      can be encoded with only $\{0,1\}$, as proposed in paper
     - entire group structure is passed to NN, where architecture is built accordingly
 \begin{figure}
   \centering
@@ -439,10 +433,10 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       outperforming EAGGA on XGB (original paper), ..., this requires special architecture, etc. pp."
     - NN
       * comprises of "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
-      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation with
-        (sigmoid implicit in the loss function for better numerical stability, NN itself outputs "logits", which refers to pre-activation output in pytorch)
-      * loss is binary cross entropy loss, optimizer is AdamW with default params
-    - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against of deep learning where model is supposed to decide itself,
+      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation
+      * optimizer is AdamW with default params, loss is binary cross entropy loss (sigmoid thus implicit in the loss function for better numerical stability,
+        NN itself outputs "logits", which refers to pre-activation output in pytorch)
+    - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against notion of deep learning where model is supposed to decide itself,
       which feature to "use" / put importance on -> ELABORATE
     - feature interaction achieved by grouping, max-operation in ReLU induces interaction effect (different kind of interaction than e.g. in LM with multiplication)
       -> equation why the interacting features need to be grouped together when using ReLU, cf. photos
@@ -451,8 +445,8 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       * interaction not of the form $x_j \cdot x_{j'}$ as used to from LMs but of a form where the sum $w_j x_j+w_{j'} x_{j'}$ decides whether $x_j,x_{j'}$
         pass through the activation or not
       * in other words: $\max(0,w_j x_j + w_{j'} x_{j'})\neq\max(0,w_j x_j)+\max(w_{j'} x_{j'})$ and thus there is an interaction
-    - monotonicty constraint achieved by clipping weights to [0, infty) for restricted equivalence relations (monotonic decrease achieved via dataset object multiplying
-      features with their individual signs), bias clipping not necessary (constant additive term)
+    - monotonicty constraint achieved by clipping weights to [0, infty) after each epoch for restricted equivalence relations (monotonic decrease achieved
+      via dataset object multiplying features with their individual signs), bias clipping not necessary (constant additive term)
       -> equation how monotonicity is enforced with this
       * consider vector form computation of hidden neuron $\boldsymbol{o}_{\text{in}}^{(l)}\in\mathbb{R}^{p^{(l)}}$ of layer $l$
         - $\boldsymbol{o}_{\text{in}}^{(l)}=\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$
@@ -462,7 +456,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       * definition of monotonically increasing function $f$: for $x_1\le x_2$ it must hold that $f(x_1)\le f(x_2)$
       * $\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$ clearly only monotonic if and only if $\boldsymbol{W}\in\mathbb{R}_{0+}{p^{(l-1)}\times p^{(l)}}$
         - where $\mathbb{R}_{0+}=[0,\infty)$
-        - hence weight clipping necessary, bias clipping not because only constant term
+        - hence weight clipping necessary, bias clipping not because only constant additive term
       * $\boldsymbol{o}_{\text{out}}^{(l)}=ReLU(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ monotonic
 \begin{figure}
   \centering
@@ -481,18 +475,18 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
       * in each fold fit model on 80\% of CV-train portion, use remaining 20\% of CV-train for early stopping
     - early stopping criterion
       * for each fold, always train for min 200 epochs, keep track of model with lowest loss
-      * after that, use patience of 100: if current model's loss is > mean of last 100 epochs' losses
+      * after that, use patience of 100: if current model's loss is > mean of last 100 epochs' losses -> stop early
       * if no early stopping, train each fold for max 10 minutes
       * then stop training, return model with lowest loss
-    -> add graphic of entire dataset split
+    -> refere Figure \ref{fig-dataset-split}
     - then evaluate on last remaining from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
     - final evaluation of individuals of pareto set
       * for each individual, train model on training set of hold-out for max \# of epochs taken during CV-training
       * decided on max \# epochs instead of mean after looking at loss graphs in preliminary experiments, also refer Figure \ref{fig-es-losses}
-      * those show that there is no uptick in losses on the early stopping portion (disjunct from training portion) of the set, hence max reasonable
+      * those show that there is no uptick in losses on the early stopping portion (disjunct from training portion) of the set, hence max is reasonable
   * hardware: training on Sagemaker Notebook instance
     - initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
-    using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
+      using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
     - thus decided for more economic + ressourcen-schonend t3.medium
   * did not train on philippine and gina datasets (308, 970 features, respectively), as they ran out of memory when computing interaction detectors
   * known bugs
@@ -515,12 +509,12 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
       is determined from fitting 10 trees + looking at relative \# of features used (cf. their github repo ~/R/TunerEAGGA.R function get\_n\_selected\_rpart())
     -> mlr3 default decision tree max depth 30
-      * i.e. datasets with p < 30 likely use all features, which translates to trunc geom prob = 1
+      * i.e. datasets with p < 30 might use all features, which translates to trunc geom prob = 1
       * vice-versa for p >> 30 datasets relative \# features < 0.5 (our trunc geom prob)
       * similar reasoning for pairwise interactions
   * individuals not in Pareto sets occassionally exhibit AUC < 0.5
     - this is not by mistake, usually AUC on binary target can simply be inverted (simply predict the opposite class)
-    - this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constraint)
+    - for us this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constraint)
     - could happen e.g. due to AdamW and weight clipping (employed to enforce monotonicity)
       * AdamW uses momentum
       * possible scenario: large momentum would yield negative weights, but after epoch they're clipped to [0,infty) + training stops due to early stopping
@@ -546,7 +540,7 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
         - possible consequence of shorter evaluation time
         - low p datasets have much higher \# generations
         - group structure space much more likely to be exhausted, i.e. more exploration of NN hps
-    - NI, NNM consequently (bounded by NF, can never be more than max \# for respective \# included features) rather low low
+    - NI, NNM consequently (bounded by NF, can never be more than max \# for respective \# included features) rather low
   * dhv contributions
     - measures contribution of an individual to the hypervolume, i.e. difference between hypervolume of entire pareto front vs hypervolume of pareto front without
       individual $\boldsymbol\lambda$: $\text{CON}_{\mathcal{P}}(\boldsymbol\lambda)=\text{HYP}(\mathcal{P})-\text{HYP}(\mathcal{P}\setminus\{\boldsymbol\lambda\})$,
@@ -556,12 +550,12 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
     -> sign of good exploration of pareto front + stable estimate, refer Section \ref{sec-moo-post}
 - loss graphs Figure \ref{fig-es-losses}
   * suggests models could have benefitted from longer training on some datasets, as some loss curves haven't converged when stopping criterion hit
-  * crit was likely triggered by short-term spike, thus could potentially be resolved by comparing average of last k loss against average of >patience< losses prior
+  * crit was likely triggered by short-term spike, thus could potentially be resolved by comparing average of last k losses against average of >patience< losses prior
     to that to not be as exposed to short-term spikes in loss
   * on other datasets, graphs suggest earlier stop would have been totally fine as the networks have long converged, but longer training likely not an issue as loss
     graphs come from early stopping dataset portion, which is disjunct from training set
 - dhv over generations Figure \ref{fig-val-dhvs}
-  * compute on val sett, i.e. had 5 folds per individual
+  * compute on val set, i.e. had 5 folds per individual
     - NF, NI, NNM always the same for each fold
     - but 5 different AUCs
     -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
@@ -583,10 +577,11 @@ all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
 - EAGGA proved to be successful in making XGBoost more interpretable while keeping performance on par with unregularised XGBoost
 - we extend EAGGA to neural networks to see if we can utilise the regularisation induced by it to make NNs both interpretable and performant on tabular data
 - as consequence propose new architecture allowing to model equivalence relations of EAGGA
+- ... conforming to \citet[chap. 2]{survey_NN_interpretability} taxonomy it fits as ..., ..., ... %TODO
 - found overall performance comparable to that of XGBoost fitted using EAGGA, which is a plus, but no outperformance
 
 (Future Outlook)
-- MO BO on group structure space possible?
+- MO BO on group structure space possible, perhaps via restricted BO?
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
