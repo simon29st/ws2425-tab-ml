@@ -135,21 +135,18 @@ formally defined proxy for interpretability and is particularly useful in rankin
 (e.g. via human-grounded evaluation) to be interpretable. The main challenge for functionally-grounded evaluation is finding a good proxy.
 
 \subsection{Hyperparameter Optimization (HPO)}
-- in contrast to model parameters, which are optimised during training, hyperparameters are parameters describing the ML algo + are specified before training
-- still often have great impact on final (trained) model performance -> can be optimised too
-- formal definition
-  * dataset $\mathcal{D}\subseteq\mathcal{X}\times\mathcal{Y}$ consisting of $n$ tuples $(\boldsymbol{x}^{(i)}, y^{(i)})\stackrel{i.i.d.}{\sim}\mathbb{P}_{\boldsymbol{x}y}$
-    (data-generating distribution), i.e. $\mathcal{D}=\{(\boldsymbol{x}^{(i)}, y^{(i)})\}_{i=1}^n$
-  * ML algo $\mathcal{I}(\cdot,\boldsymbol\lambda)$ with HP config $\boldsymbol\lambda\in\boldsymbol\Lambda$ maps dataset to model
-    $\hat{f}:\mathcal{X}\rightarrow\mathbb{R}^g\subseteq\mathcal{Y}$ (where $g\in\mathbb{N}$ is \# of classes of target),
-    i.e. $\mathcal{I}:(\mathbb{D}\times\boldsymbol\Lambda)\rightarrow\mathcal{H}$, with $\mathbb{D}$ space of all finite datasets and $\mathcal{H}$ hypothesis space (space of all models $\hat{f}$)
-  * denote $\mathcal{I}_{\boldsymbol\lambda}$ as (untrained) model with fixed HP config $\boldsymbol\lambda$
-  * loss function $L$
-  * goal of model training: for fixed $\boldsymbol\lambda$, have $\mathcal{I}$ find model $\hat{f}$ minimising expected generalisation error
-    $GE(\mathcal{I},\boldsymbol\lambda,\mathcal{D},L)=\mathbb{E}_{(\boldsymbol{x},y)\sim\mathbb{P}_{\boldsymbol{x}y}}[L(y,\mathcal{I}_{\boldsymbol\lambda}(\mathcal{D})(\boldsymbol{x}))]$
-  * goal of HP optim: find $\boldsymbol\lambda$ minimising expected generalisation error, i.e. $\argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} GE(\mathcal{I},\boldsymbol\lambda,\mathcal{D},L)$
-- \citep[p. 3]{10.1145/3610536}
-- HPO = black-box optim problem -> we can apply any black box algo to tune
+In contrast to model parameters, which are optimized during training, hyperparameters are those describing the machine learning algorithm and are fixed before training.
+Because they usually have a significant impact on the trained model's performance, hyperparameters are often optimized, too.
+Let $\mathcal{D}\subseteq\mathcal{X}\times\mathcal{Y}$ be a dataset consisting of $n$
+tuples drawn from the data-generating distribution, i.e. $(\boldsymbol{x}^{(i)}, y^{(i)})\stackrel{i.i.d.}{\sim}\mathbb{P}_{\boldsymbol{x}y},\forall i=1,...,n$.
+Furthermore, let $\mathcal{I}:(\mathbb{D}\times\boldsymbol\Lambda)\rightarrow\mathcal{H}, (\mathcal{D},\boldsymbol\lambda)\mapsto\hat{f}$
+be an algorithm that maps a given dataset $\mathcal{D}$ and hyperparameter configuration $\boldsymbol\lambda\in\boldsymbol\Lambda$ to a model $\hat{f}$.
+Denote with $\mathcal{I}_{\boldsymbol\lambda}$ an algorithm with fixed hyperparameter configuration a chosen loss function with $L$.
+The goal of model training is, for fixed $\boldsymbol\lambda$, to have $\mathcal{I}_{\boldsymbol\lambda}$ find model $\hat{f}$ minimising the expected generalisation error
+$GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)=\mathbb{E}_{(\boldsymbol{x},y)\sim\mathbb{P}_{\boldsymbol{x}y}}[L(y,\mathcal{I}_{\boldsymbol\lambda}(\mathcal{D})(\boldsymbol{x}))]$
+The goal of HPO, on the other hand, is to find $\boldsymbol\lambda$ minimising the expected generalisation error,
+i.e. $\argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} GE(\mathcal{I}_{\boldsymbol\lambda},\mathcal{D},L)$.
+For this there is no analytical expression available, making HPO a blackbox optimization problem.  \citep[pp. 2f]{10.1145/3610536}
 
 [model free]
 (grid + random search)
