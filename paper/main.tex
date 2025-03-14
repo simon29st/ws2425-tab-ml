@@ -155,23 +155,38 @@ We will first outline model-free methods to approach blackbox optimization probl
 The most basic model-free strategies for blackbox optimization are grid and random search.
 In the latter, the user defines a range of interest for each HP and then evaluating points along a grid within the cartesian product of those.
 This has the drawback of scaling extremely poorly in both number of HP dimensions and number of query points per range of interest.
-Random search, on the other hand, randomly samples a value for each HP until it runs out of budget. Its explorative nature, ease of use, and no assumptions about the model
-makes it a good baseline. It is also superior to grid search in cases were one or more HPs have little impact on model performance, as for a given budget $B$,
-each HP will likely be queried with $B$ different values, whereas for grid search each HP will only be queried with $B^{1/N}$ different values for $N$ HPs.
+Random search, on the other hand, randomly samples a value for each HP until it runs out of budget. Its explorative nature, ease of use, and no assumptions
+about the model makes it a good baseline. It is also superior to grid search in cases were one or more HPs have little impact on model performance,
+as for a given budget $B$, each HP will likely be queried with $B$ different values, whereas for grid search each HP will only be queried with $B^{1/N}$
+different values for $N$ HPs. \citep[chap. 1.3]{feurer_hyperparameter_2019}
 
-(evolutionary algorithms)
-- another model-free class of optimisation algorithms, inspired by naturally occuring evolution
-- based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
-  * \textbf{reproduction}: pick an individual to reproduce with prob proportional to its fitness
-  * \textbf{crossover}
-    - select 2 ``parents'' from pool of reproducing individuals
-    - for a position $k$ in their HP configs, with certain prob, swap their values after position $k$, yielding 2 new children
+% evolutionary algorithms
+Another popular class of model-free optimizers are evolutionary algorithms (EAs), which are conceptually simple and can handle even complex parameter spaces,
+given appropriate implementation of operators.
+EAs are iteratively evolving a population of individuals (an individual is simply a hyperparameter configuration) of size $\mu$, where in each iteration (generation),
+$\lambda$\footnote{We distinguish between $\lambda\in\mathbb{N}$ when referring to the offspring size of EAs and $\boldsymbol\lambda\in\boldsymbol\Lambda$ when
+referring to a hyperparameter configuration.} offspring are generated via three operators \citep[pp. 10-TODO]{genetic_algos}.\\
+\textbf{Reproduction} samples an individual from the population to reproduce with probability proportional to its fitnes. For HPO, fitness usually refers to the
+performance metric the model resulting from the individual's HP configuration is evaluated on.\\
+\textbf{Crossover} selects two ``parents'' from the pool of reproducing individuals. An index $k$ is sampled at random and all HP values from
+index $k$ on are swapped, yielding two new ``children'' individuals.\\
+\textbf{Mutation} randomly changes single HP values of an individual chosen for reproduction, e.g. by adding Gaussian noise to real values or flipping bits
+on binary values.\\
+At the end of each generation, the EA keeps the best $\mu$ individuals, either only from the offspring (``$(\mu,\lambda)$-selection'') or more commonly from
+population and offspring (``$(\mu+\lambda)$-selection''), which is also called an ``elitist'' strategy, as it's guaranteed to keep the best individual.
+\citep[chap. 1.3]{feurer_hyperparameter_2019}
+
+%- another model-free class of optimisation algorithms, inspired by naturally occuring evolution
+%- based on a population, which iteratively (iteration = generation) generates $\lambda$ offspring via 3 operators (all sub-bullets from \citet[pp. 10-]{genetic_algos})
+%  * \textbf{reproduction}: pick an individual to reproduce with prob proportional to its fitness
+%  * \textbf{crossover}
+%    - select 2 ``parents'' from pool of reproducing individuals
+%    - for a position $k$ in their HP configs, with certain prob, swap their values after position $k$, yielding 2 new children
     % TODO: use example from book page 12
-  * \textbf{mutation}: with certain prob, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
-- selection at end of each genertion: keep $\mu$ best individuals (based on some fitness function), either from only offspring (``$(\mu,\lambda)$-selection'')
-  or (more commonly) from population + offspring (``$(\mu+\lambda)$-selection'', guaranteed to keep best individual)
-- pro: conceptually simple + can handle even complex parameter spaces (continuous, discrete, hierarchical, etc.) given appropriate implementation of operators
-all above starting at HPO from \citep[chap. 1.3]{feurer_hyperparameter_2019}
+%  * \textbf{mutation}: with certain prob, change values of an individual, e.g. by adding Gaussian noise (Gaussian mutation) to real values, or flipping bit for binary values
+%- selection at end of each genertion: keep $\mu$ best individuals (based on some fitness function), either from only offspring (``$(\mu,\lambda)$-selection'')
+%  or (more commonly) from population + offspring (``$(\mu+\lambda)$-selection'', guaranteed to keep best individual)
+%- pro: conceptually simple + can handle even complex parameter spaces (continuous, discrete, hierarchical, etc.) given appropriate implementation of operators
 - prominent examples
   * CMA-ES
     - ``Covariance Matrix Adapation Evolution Strategy''
