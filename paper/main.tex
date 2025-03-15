@@ -657,46 +657,39 @@ horizontal loss graphs.
 As the loss graphs remain horizontal and there is no uptick again, this would likely not be detrimental to model performance and the main ``risk'' would be
 more a expensive computation from longer trainings.
 \\
-The dominated hypervolume over generations in Figure \ref{fig-val-dhvs}
+The AUC used in computing the dominated hypervolume over generations in Figure \ref{fig-val-dhvs} is the mean AUC over all folds on the validation set.
+All but 3 datasets, 2 of which were only trained for 1 generation, exhibit improvement of their dominated hypervolume over generations. The absolute as
+well as relative improvement, however, is almost negligible, suggesting there to be no large decrease in dominated hypervolume, would we have just evaluated
+the group structure initialised by the detectors.
+This was also the reason behind not running EAGGA on the philipine and gina datasets on randomly initialised detectors (as the detectors for those datasets
+ran out of memory due to the high feature cardinality), as the detectors prove vital for the initial performance. This finding is also in
+line with \citep[Fig. 4, p. 545]{EAGGA}.
+\\
+Clearly, there are some artifacts causing drops along the y-axis in most plots. This is likely due to the inconsistent computation of the Pareto front
+by a third-party library: in preliminary experiments we observed slightly varying front ranks on a synthetic sample of 10 (AUC, NF, NI, NNM) vectors.
+Unfortunately, this behaviour was still present when switching to another library for front rank computation, and thus not fixable for us.
+From our anecdotal evidence, the variations in rankings in these preliminary experiments only concerned few samples that were assigned to alternating
+neighbouring fronts, which seemed reasonable not to be concerned over.  % ok formulation?
+\\
+Another observation from the logs during training is AUC occassionally being less than 0.5.
+In general, AUC can then simply be inverted, as the model can usually always simply predict the opposite.
+In our case, however, this is not possible as easily due to weight clipping for groups with a monotonicty constraint.
+A potential scenario were an AUC less than 0.5 could happen is when AdamW has high momentum, leading to negative weights that are then clipped to the
+non-negative domain at the end of the epoch.
+We acknowledge that weight clipping is a very imperfect way of enforcing monotonicity, but currently seems to be the only way to implement this type of
+constrained optimisation in pytorch.
 
-
-
-- dhv over generations Figure \ref{fig-val-dhvs}
-  * compute on val set, i.e. had 5 folds per individual
-    - NF, NI, NNM always the same for each fold
-    - but 5 different AUCs
-    -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
-  * artifacts / drops along y likely due to inconsistent computation of Pareto front by third-party library
-    - preliminary experiments on dummy pareto fronts with 10x4 metrics: noticed nds function returning different rankings for same front
-    - returned ranking switched back and forth between two only slightly different options (only 1 or 2 indices were swapped)
-    - not sure what caused this, as made same observation using another library that was planned as alternative
-    - thus unfortunately not fixable for me
-  * all but 3 datasets (2 of which only trained for 1 generation, aynway) show improvement of dominated hypervolume over generations
-  * BUT: absolute as well as relative improvement almost negligible -> no large final dhv decrease would we just have evaluated the models gotten from the detectors
-    - this was also the reason we didn't run EAGGA on philippine and gina simply without the detectors (as that's where they crashed) -> evidence suggested that detectors are vital to initial performance
-    - original paper supports this assumption \citep[Fig. 4, p. 545]{EAGGA}
-
-
-
-
-    - preliminary
-  * our implementation of feature + interaction detectors likely tend to include  % belongs in "general algorithm"
-    - more features + interactions for high p datasets
-    - less for low p datasets
-    - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
-      is determined from fitting 10 trees + looking at relative \# of features used (cf. their github repo ~/R/TunerEAGGA.R function get\_n\_selected\_rpart())
-    -> mlr3 default decision tree max depth 30
-      * i.e. datasets with p < 30 might use all features, which translates to trunc geom prob = 1
-      * vice-versa for p >> 30 datasets relative \# features < 0.5 (our trunc geom prob)
-      * similar reasoning for pairwise interactions
-  * individuals not in Pareto sets occassionally exhibit AUC < 0.5
-    - this is not by mistake, usually AUC on binary target can simply be inverted (simply predict the opposite class)
-    - for us this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constrained)
-    - could happen e.g. due to AdamW and weight clipping (employed to enforce monotonicity)
-      * AdamW uses momentum
-      * possible scenario: large momentum would yield negative weights, but after epoch they're clipped to [0,infty) + training stops due to early stopping
-      * weight clipping very imperfect way of enforcing monotonicity, but currently in pytorch unfortunately only way to implement this
-
+% belongs in "general algorithm"
+%    - preliminary
+%  * our implementation of feature + interaction detectors likely tend to include
+%    - more features + interactions for high p datasets
+%    - less for low p datasets
+%    - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
+%      is determined from fitting 10 trees + looking at relative \# of features used (cf. their github repo ~/R/TunerEAGGA.R function get\_n\_selected\_rpart())
+%    -> mlr3 default decision tree max depth 30
+%      * i.e. datasets with p < 30 might use all features, which translates to trunc geom prob = 1
+%      * vice-versa for p >> 30 datasets relative \# features < 0.5 (our trunc geom prob)
+%      * similar reasoning for pairwise interactions
 
 \section{Conclusion and Future Outlook}
 (Conclusion)
@@ -738,7 +731,7 @@ tqdm \cite{tqdm}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_early_stopping_losses_pareto_set.png}
   \caption{Pareto set loss of all datasets, evaluated on early stopping set. Same colours denote losses coming from folds of the same individual.
-            x-axis portrait epochs, y-axis binary cross entropy loss.}
+            x-axes portrait epochs, y-axes binary cross entropy loss.}
   \label{fig-es-losses}
 \end{figure}
 
@@ -746,7 +739,7 @@ tqdm \cite{tqdm}
   \centering
   \includegraphics[width=0.9\linewidth]{../code/export/plot_val_dhvs_over_time.png}
   \caption{Dominated hypervolume over generations, evaluated on validation set.
-            x-axis portrait generations, y-axis dominated hypervolume using mean AUC over folds.}
+            x-axes portrait generations, y-axes dominated hypervolume using mean AUC over folds.}
   \label{fig-val-dhvs}
 \end{figure}
 
