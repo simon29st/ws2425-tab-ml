@@ -283,46 +283,62 @@ in the fabric. \citep[pp. 1-2, p.8]{saxena2017convolutionalneuralfabrics}
 % don't necessarily talk about co-adaptation problem
 
 \subsection{Multi-Objective Optimization}
-- in most practical use cases one doesn't just want to optimise for performance but e.g. also for interpretability using some proxy metrics
-- formal definition
-  * vector of objectives $c_1,c_2,...,c_m=\boldsymbol{c}:\boldsymbol\Lambda\rightarrow\mathbb{R}^m$
-  * goal: minimise vector
-  * \citep[p. 11]{10.1145/3610536}
+In most applications, practicioners don't just want to optimize for performance exclusively but, for instance, also desire an interpretable model,
+which they may measure via some proxy metric.
+Let $c_1,c_2,...,c_m = \boldsymbol{c}:\boldsymbol\Lambda\rightarrow\mathbb{R}^m$ be the vector of $m$ objectives, the goal of multi-objective optimization (MOO)
+is to minimise this vector \citep[p. 11]{10.1145/3610536}.
+
 \subsubsection{Pareto-optimality}
-- problem: usually conflicting objectives, i.e. minimisation of $\boldsymbol{c}$ not possible along all dimensions
-- thus aim to find trade-off solutions of non-dominated points
-- we say a ``point dominates another''
-  * if there is no other point strictly better in at least one dimension and better or equal in the remaining ones
-  * formally: $\boldsymbol\lambda$ dominates $\boldsymbol\lambda'$ ($\boldsymbol\lambda\prec\boldsymbol\lambda'$) if and only if
-    $\forall i\in\{1,...,m\}:c_i(\boldsymbol\lambda) \le c_i(\boldsymbol\lambda') \wedge \exists j\in\{1,...,m\}:c_j(\boldsymbol\lambda) < c_j(\boldsymbol\lambda')$
-  * \citep[pp. 7f]{10.1145/3610536} + \citep[pp. 198f]{genetic_algos}
-- Pareto set: set of nondominated points $\mathcal{P}:=\{\boldsymbol\lambda\in\boldsymbol\Lambda|\nexists\boldsymbol\lambda'\in\boldsymbol\Lambda\text{ s.t. }\boldsymbol\lambda'\prec\boldsymbol\lambda\}$
-- Pareto front: image of nondominated points
-- goal: find set of nondominated points $\hat{\mathcal{P}}$ approximating true Pareto set $\mathcal{P}$ well
-(evaluation)
-- if knowledge over true Pareto-front, evaluating set of individuals can be done based on distance of estimated to true Pareto front
-- if no knowledge over true Pareto-front, volume-based approaches are popular, which measure volume between Pareto front estim and some chosen
-  reference point (usually worst point in objective space), e.g. 0 for accuracy (optimum is 1)
-- \citep[pp. 8-10]{10.1145/3610536}
+Optimizing $\boldsymbol{c}$ usually comes with the challenge of conflicting objectives: improving one objective means deteriorating another.
+We thus seek to find a set of trade-off solutions, so called \textit{non-dominated} points.
+A point $\boldsymbol\lambda$ dominates another point $\boldsymbol\lambda'$ ($\boldsymbol\lambda\prec\boldsymbol\lambda'$) if there is no other point that is
+strictly better in at least one objective and better or equal in the remaining ones. Formally,
+\begin{equation}
+  \forall i\in\{1,...,m\}:c_i(\boldsymbol\lambda) \le c_i(\boldsymbol\lambda') \wedge \exists j\in\{1,...,m\}:c_j(\boldsymbol\lambda) < c_j(\boldsymbol\lambda')
+  \label{eq-pareto-domination}
+\end{equation}
+as defined in \citep[pp. 7f]{10.1145/3610536} and \citep[pp. 198f]{genetic_algos}.
+\\
+The set of non-dominated or \textit{Pareto-optimal}
+points $\mathcal{P}:=\{\boldsymbol\lambda\in\boldsymbol\Lambda|\nexists\boldsymbol\lambda'\in\boldsymbol\Lambda\text{ s.t. }\boldsymbol\lambda'\prec\boldsymbol\lambda\}$
+is commonly referred to as the \textit{Pareto set} and its image as the \textit{Pareto front}.
+The goal of MOO is to find a set of non-dominated points $\hat{\mathcal{P}}$ approximating the true Pareto set $\mathcal{P}$ well.
+
+% evaluation
+There are different techniques to evaluate an estimated Pareto-front. If we have knowledge over the true Pareto-front, we can compute the distance between the approximation
+and the true front. In most cases, this knowledge cannot be assumed.
+Then, usually volume-based approaches are used for evaluation, most notably the hypervolume. The hypervolume, or S-metric, of a Pareto-front, computes the volume between
+the estimated front and some chosen reference point, which is usually the worst point in objective space.
+The larger the hypervolume, the closer the estimate is to the true Pareto-front. \citep[pp. 8-10]{10.1145/3610536}
+
 \subsubsection{A-priori}
-- requires specifying trade-off between objectives a-priori, will outline 2 popular approaches
-- e.g. different versions of \textbf{scalarization}
-  * weighted sum of objective functions
-    - $\argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} w_i c_i(\boldsymbol\lambda)$ with $\sum_{i=1}^k w_i=1$ and $w_i>0,\forall i=1,...,k$
-    - drawbacks
-      * solution sensitive to weights
-      * different users might have different opinions on weights \citep[chap. 3.1]{NSGA}
-    - \citep[p. 11]{10.1145/3610536}
-  * $\epsilon$-constraint
-    - translate all but one objective into constraint, then optimise remaining objective subject to the constraints
-    - $\text{w.l.o.g.} \argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} c_1(\boldsymbol\lambda) \text{ s.t. } c_2(\boldsymbol\lambda)\le\epsilon_2,...,c_m(\boldsymbol\lambda)\le\epsilon_m$
-    - conceputally similar to weighted sum: also sensitive to constraints, must be chosen sensibly
-    - \citep[p. 12]{10.1145/3610536}
-- \textbf{lexicographic method}
-  * define priority of objectives
-  * greedily optimise objectives in order of priority, constraint to the solutions of the already optimised (higher-priority) objectives
-  * again very dependent on user-defined priorisation
-  * \citep[p. 13749]{lexicographic_MOO}  % TODO: perhaps find a different source more related to ML
+For optimizing a multi-objective problem, there are largely two general approaches.
+One of those are \textit{a-priori} methods, of which we will briefly outline two popular techniques.
+
+\textbf{Scalarization} approaches impose an implicit order of priority on the objectives.
+The simplest one is optimizing a weighted sum of objective functions
+\begin{equation}
+  \argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} \sum_{i=1}^m w_i c_i(\boldsymbol\lambda)
+  \text{ s.t. } \sum_{i=1}^m w_i=1 \wedge w_i>0,\forall i=1,...,m
+  \label{eq-a-priori-scalarization-weighted-sum}
+\end{equation}
+Weights are chosen a-priori by the user and the solution is very sensitive to them, making this method very reliant on different
+users' preferences. \citep[p. 11]{10.1145/3610536} and \citep[chap. 3.1]{NSGA}
+\\
+Another form of scalarization is the $\epsilon$-constraint, which translates all but one objective into constraints and then optimizes the remaining
+objective subject to the constraints. Without loss of generality, the first constraint can be optimized
+\begin{equation}
+  \argmin_{\boldsymbol\lambda\in\boldsymbol\Lambda} c_1(\boldsymbol\lambda)
+  \text{ s.t. } c_2(\boldsymbol\lambda)\le\epsilon_2,...,c_m(\boldsymbol\lambda)\le\epsilon_m
+  \label{eq-a-priori-scalarization-epsilon}
+\end{equation}
+This method is, similarly to the weighted sum, conceptually simple yet also very sensitive to the chosen constraints. \citep[p. 12]{10.1145/3610536}
+\\
+Alternative to scalarization is the \textbf{lexicographic method}.
+For it, the user assigns a priority to each objective and then greedily optimizes each objective in order of priority, constrained to the solutions of
+the already optimized, higher-priority objectives. \citep[p. 13749]{lexicographic_MOO}
+Again, solutions are very dependent on the user-defined priorisation.
+
 \subsubsection{A-posteriori}
 \label{sec-moo-post}
 - problem a priori
