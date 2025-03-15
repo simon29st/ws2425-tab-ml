@@ -82,7 +82,7 @@ features used to fit the model by setting some coefficients to 0 \citep[p. 267]{
 \\
 Neural networks as a model class have achieved impressive performance on a multitude of problems, yet still struggle with the most common format --
 tabular data \citep[p. 7499]{Borisov_2024}.
-Recent research, however, suggest that strong regularisation is beneficial to a neural network's performance on tabular data \citep[8]{NEURIPS2021_c902b497}.
+Recent research, however, suggest that strong regularisation is beneficial to a neural network's performance on tabular data \citep[p. 8]{NEURIPS2021_c902b497}.
 \citet{EAGGA} propose a framework to increase the interpretability of XGBoost using regularisation.
 In this report, we explore if the same framework can be extended to neural networks, a model class that in its fully-connected feedforwad form is
 inherently non-interpretable, to tackle both explainability and achieve performance on tabular data that is on par with XGBoost.
@@ -93,16 +93,16 @@ inherently non-interpretable, to tackle both explainability and achieve performa
 \subsection{Interpretability}
 As there is no clear definition for interpretability, we will consider it as ``the ability to provide \textit{explanations} in \textit{understandable terms} to a human'',
 where \textit{explanations} are logical decision rules and \textit{understandable terms} relate to commonly used terms in the domain of the problem,
-as suggested by \citet[chap. 1]{survey_NN_interpretability}. Further, we use the term ``explainability'' in an exchangeable manner with ``interpretability'',
+as suggested by \citet[p. 726]{survey_NN_interpretability}. Further, we use the term ``explainability'' in an exchangeable manner with ``interpretability'',
 as is commonly done.
 
 % Why Interpretability is desirable?
-Explainability of a model's reasoning is in many ways desirable. \citet[pp. 3-4]{Zach2019InterpretabilityOD} gives a range of examples,
+Explainability of a model's reasoning is in many ways desirable. \citet[pp. 3f]{Zach2019InterpretabilityOD} gives a range of examples,
 amongst which are \textit{gaining trust}, e.g. when doctors rely on medical diagnosis predictions, avoiding \textit{subconcious biases} by
 making sure loan approvals are non-discriminatory, or \textit{regulatory} reasons, most notably the EU's ``Right to Explanation'' warranted by the
-GDPR \citep[p. 1]{review_NN_interpretability} or for approval of drugs discovered using machine learning models \citep[1B]{survey_NN_interpretability}.
+GDPR \citep[p. 1]{review_NN_interpretability} or for approval of drugs discovered using machine learning models \citep[pp. 727f]{survey_NN_interpretability}.
 It can further prove helpful for explaining unexpected drops in model performance, which could arise from optimizing a model with respect to loss and then judging its
-performance on a different metric such as accuracy, a practice known as \textit{model debugging} \citep[1B]{survey_NN_interpretability} or for
+performance on a different metric such as accuracy, a practice known as \textit{model debugging} \citep[pp. 727f]{survey_NN_interpretability} or for
 \textit{scientific understanding} in domains where only models can make sense of increasingly complex data anymore and learnt knowledge encoded in a model needs to be
 made accessible to humans to be used reliably \citep[p. 1]{review_NN_interpretability}.
 
@@ -112,7 +112,7 @@ Amongst post-hoc techniques, we can further divide the space into model-specific
 (e.g. partial depence plots, ALE) methods \citep[chap. 3.2]{molnar2022}.
 
 % Taxonomy
-\citet[chap. 2]{survey_NN_interpretability} extend this distinction to a three-dimensional taxonomy, allowing for better categorisation of neural networks (NNs).
+\citet[pp. 728f]{survey_NN_interpretability} extend this distinction to a three-dimensional taxonomy, allowing for better categorisation of neural networks (NNs).
 \\
 \textbf{Passive vs Active Approaches}, where \textit{passive} are all post-hoc methods and \textit{active} methods actively change either the architecture or
 training process to increase model interpretability.
@@ -125,7 +125,7 @@ pick up on, and logical \textit{rules}, such as if-then clauses or tree-induced 
 explaining model behaviour for sets of samples grouped by some criterion, to \textit{global} methods, which explain the network as a whole.
 
 % Evaluation
-Given its unclear definition, evaluating interpretability can be challenging. \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise
+Given its unclear definition, evaluating interpretability can be challenging. \citet[pp. 4-6]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise
 possible evaluation methods based on their rigorousness.
 \\
 \textbf{Application-grounded evaluation} evaluates interpretations directly with respect to the task, by having human experts evaluate the outcome and
@@ -163,7 +163,7 @@ This has the drawback of scaling extremely poorly in both number of HP dimension
 Random search, on the other hand, randomly samples a value for each HP until it runs out of budget. Its explorative nature, ease of use, and no assumptions
 about the model makes it a good baseline. It is also superior to grid search in cases were one or more HPs have little impact on model performance,
 as for a given budget $B$, each HP will likely be queried with $B$ different values, whereas for grid search each HP will only be queried with $B^{1/N}$
-different values for $N$ HPs. \citep[chap. 1.3]{feurer_hyperparameter_2019}
+different values for $N$ HPs. \citep[pp. 7f]{feurer_hyperparameter_2019}
 
 % evolutionary algorithms
 Another popular class of model-free optimizers are evolutionary algorithms (EAs), which are conceptually simple and can handle even complex parameter spaces,
@@ -183,12 +183,12 @@ on binary values.
 \\
 At the end of each generation, the EA keeps the best $\mu$ individuals, either only from the offspring (``$(\mu,\lambda)$-selection'') or more commonly from
 population and offspring (``$(\mu+\lambda)$-selection''), which is also called an ``elitist'' strategy, as it's guaranteed to keep the best individual.
-\citep[chap. 1.3]{feurer_hyperparameter_2019}
+\citep[p. 188]{simon2013evolutionary}
 
 One of the most popular EA implementations is the ``Covariance Matrix Adaptation Evolution Strategy'' (CMA-ES).
 It employs a multivariate normal distribution to generate offspring, for which the mean is a weighted average of the previous generation's individuals
 and the covariance matrix similarly is the weighted covariance of the previous generation.
-The weighing scheme for both is done in a way as to reproduce previously successful (i.e. selected) steps \citep[p. 8-11]{hansen2023cmaevolutionstrategytutorial}.
+The weighing scheme for both is done in a way as to reproduce previously successful (i.e. selected) steps \citep[pp. 8-11]{hansen2023cmaevolutionstrategytutorial}.
 
 Another popular EA approach is Differential Evolution. Its populaton is randomly initialized so the entire search space is covered.
 In each generation $g$, for each $\boldsymbol\lambda_{i,g}$ with $i=1,...,n$ it creates ``mutant vectors''
@@ -211,7 +211,7 @@ BO is an iterative algorithm comprising a probabilistic surrogate model $\tilde{
 It maintains and continually extends a set of points it already evaluated on the target function.
 In each iteration, the posterior predictive distribution is determined by fitting the surrogate model on this set of points.
 The acquisition function then retrieves the highest utility point from the surrogate model and evaluates it on the target function, after which it adds the point
-to the set of queried points \citep[chap. 1.3.2]{feurer_hyperparameter_2019} and \citep[pp. 2f]{frazier2018tutorialbayesianoptimization}.
+to the set of queried points \citep[p. 9]{feurer_hyperparameter_2019} and \citep[pp. 2f]{frazier2018tutorialbayesianoptimization}.
 Evidently, neither the target function nor the surrogate model are optimized directly. Rather, the acquisition function trades-off exploration and exploitation of
 the surrogate and is maximised to yield the next query point most likely to optimize the two objectives as defined by the acquisition function.
 \\
@@ -247,10 +247,10 @@ hyperparameter $\alpha_0$. \citep[p. 5]{frazier2018tutorialbayesianoptimization}
   \label{eq-kernel-gaussian}
 \end{equation}
 A drawback of Gaussian Processes is its poor scalability in number of data points and number of hyperparameters, although there exist workarounds approximating the full GP
-with only a subset of the samples. \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
+with only a subset of the samples. \citep[pp. 10f]{feurer_hyperparameter_2019}
 \\
 \textbf{Random Forests}, unlike GPs, can handle complex hyperparameter spaces even including categorical and hierarchical HPs. Their computational complexity is also far
-less, making them a popular alternative to Gaussian Processes. \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
+less, making them a popular alternative to Gaussian Processes. \citep[p. 12]{feurer_hyperparameter_2019}
 
   
 \subsection{Neural Architecture Search}
@@ -260,12 +260,12 @@ entire space.
 In our extension of the EAGGA approach we don't employ NAS as research focusses on the NLP and
 image domains \citep{baker2017designingneuralnetworkarchitectures},  \citep{10.5555/3504035.3504375},  \citep{10.1145/3071178.3071229},
 where features (i.e. tokens or pixels, respectively) exhibit strong correlation amongst themselves, which is usually not the case for tabular data \citep[p. 7499]{Borisov_2024}.
-Still, we want to outline two notable approaches for neural architecture search in this paper, one of which are \textbf{cell search spcaces}.
+Still, we want to outline two notable approaches for neural architecture search in this paper, one of which are \textbf{cell search spaces}.
 These modularise an NN into a chain-structure of cells, where each cell is a basic building block of the respective architecture. For regular feedforwad neural networks,
 this could be a linear layer of fixed size and with a specific activation function,
 for CNNs this could be a specific convolutional operation or pooling function, for instance.
 Instead of tuning every hyperparameter, the sequential placement of the cells is then optimzed during NAS, e.g. via random search or Bayesian
-Optimization. \citep[chap. 3.2]{elsken_neural_2019}
+Optimization. \citep[p. 67]{elsken_neural_2019}
 \\
 Treating a neural network as a sequence of cells instead of one fixed entity further allows exploiting this structure with special sequential optimization techniques.
 \citet[p. 3]{zoph2017neuralarchitecturesearchreinforcement} and \citet[pp. 2-4]{Zoph_2018_CVPR} propose a cell search method using RNNs and reinforcement learning.
@@ -279,7 +279,7 @@ search space. Each path through the DAG is one specific network architecture, wh
 on the layers' values. The entire DAG has one designated input and one output node.
 It is then trained just like a regular NN, after which the optimal path, i.e. network architecture, is selected from the fabric.
 This has the advantage of, albeit being slower than training a single model, being far more efficient and less expensive than training all architectures encoded
-in the fabric. \citep[pp. 1-2, p.8]{saxena2017convolutionalneuralfabrics}
+in the fabric. \citep[pp. 1-2, p. 8]{saxena2017convolutionalneuralfabrics}
 % don't necessarily talk about co-adaptation problem
 
 \subsection{Multi-Objective Optimization}
@@ -323,7 +323,7 @@ The simplest one is optimizing a weighted sum of objective functions
   \label{eq-a-priori-scalarization-weighted-sum}
 \end{equation}
 Weights are chosen a-priori by the user and the solution is very sensitive to them, making this method very reliant on different
-users' preferences. \citep[p. 11]{10.1145/3610536} and \citep[chap. 3.1]{NSGA}
+users' preferences. \citep[p. 11]{10.1145/3610536} and \citep[pp. 223f]{NSGA}
 \\
 Another form of scalarization is the $\epsilon$-constraint, which translates all but one objective into constraints and then optimizes the remaining
 objective subject to the constraints. Without loss of generality, the first constraint can be optimized
@@ -615,12 +615,12 @@ This happened once for the dataset ``madeline'' after generation 9 and training 
       \centering
       \includegraphics[width=\linewidth]{./EAGGA-XGB-dhv.PNG}
       \caption{Mean dominated Hypervolume of $EAGGA_{\text{XGBoost}}$, $EAGGA_{\text{XGBoost}_{\text{md2}}}$, and union of competitors averaged over
-      10 replications. Bars represent standard errors. \citep[Figure 2, p. 544]{EAGGA}}
+      10 replications. Bars represent standard errors. Figure taken from \citep[Figure 2, p. 544]{EAGGA}}
       \label{fig-eagga-xgb-dhvs}
   \end{minipage}}
 \end{figure}
-As evident from Figures \ref{fig-test-dhvs}, \ref{fig-eagga-xgb-dhvs}, applying EAGGA to neural networks yields comparable performance to applying it to XGBoost,
-both with and without restricting the maximum tree depth.
+As evident from Figures \ref{fig-test-dhvs}, \ref{fig-eagga-xgb-dhvs}, applying EAGGA to neural networks yields similar or slightly worse performance compared to
+to applying it to XGBoost, both with and without restricting the maximum tree depth.
 A direct comparison to unrestricted neural networks trained with regular stochastic gradient descent has not been made, as this would have led to a hypervolume of 0
 due to NF, NI, and NNM all being 1.
 Similar to $EAGGA_{\text{XGBoost}}$ and $EAGGA_{\text{XGBoost}_{\text{md2}}}$, our extension consistently outperforms the union of competitors.
@@ -679,17 +679,6 @@ non-negative domain at the end of the epoch.
 We acknowledge that weight clipping is a very imperfect way of enforcing monotonicity, but currently seems to be the only way to implement this type of
 constrained optimization in pytorch.
 
-% belongs in "general algorithm"
-%    - preliminary
-%  * our implementation of feature + interaction detectors likely tend to include
-%    - more features + interactions for high p datasets
-%    - less for low p datasets
-%    - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
-%      is determined from fitting 10 trees + looking at relative \# of features used (cf. their github repo ~/R/TunerEAGGA.R function get\_n\_selected\_rpart())
-%    -> mlr3 default decision tree max depth 30
-%      * i.e. datasets with p < 30 might use all features, which translates to trunc geom prob = 1
-%      * vice-versa for p >> 30 datasets relative \# features < 0.5 (our trunc geom prob)
-%      * similar reasoning for pairwise interactions
 
 \section{Conclusion and Future Outlook}
 % Conclusion
@@ -698,7 +687,7 @@ a challenging discipline for neural networks. Following recent research suggesti
 tabular data \citep[8]{NEURIPS2021_c902b497}, we extend EAGGA \citep{EAGGA} to neural networks, utilising its regularising properties to achieve similar
 performance with neural networks as with XGBoost and simultaneously increase interpretability of this notoriously uninterpretable model class.
 As a consequence, we propose a new architecture allowing to model the equivalence relations of the EAGGA framework.
-We create a model whose interpretation is active, attributional, and global in the framework of \citet[chap. 2]{survey_NN_interpretability}, and find
+We create a model whose interpretation is active, attributional, and global in the framework of \citet[pp. 3f]{survey_NN_interpretability}, and find
 overall performance, as measured on the dominated hypervolume of (AUC, NF, NI, NNM) to be comparable to that of XGBoost fitted using EAGGA.
 \\
 
