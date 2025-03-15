@@ -113,23 +113,29 @@ Amongst post-hoc techniques, we can further divide the space into model-specific
 
 % Taxonomy
 \citet[chap. 2]{survey_NN_interpretability} extend this distinction to a three-dimensional taxonomy, allowing for better categorisation of neural networks (NNs),
-a model class that in its fully-connected feedforwad form is inherently non-interpretable.\\ % TODO: letztes halbsatz vllt lieber in intro unterbringen, hier ist der awkward und unnötig ausschmückend
+a model class that in its fully-connected feedforwad form is inherently non-interpretable. % TODO: letztes halbsatz vllt lieber in intro unterbringen, hier ist der awkward und unnötig ausschmückend
+\\
 \textbf{Passive vs Active Approaches}, where \textit{passive} are all post-hoc methods and \textit{active} methods actively change either the architecture or
-training process to increase model interpretability.\\
+training process to increase model interpretability.
+\\
 \textbf{Type of Explanations}, distinguishing between \textit{example} methods, providing concrete examples of what leads to a desired output, \textit{attribution}
 methods that attribute the effect on the output for a specific feature, \textit{hidden semantic} methods, which explain the types of inputs particular neurons or layers
-pick up on, and logical \textit{rules}, such as if-then clauses or tree-induced rules.\\
+pick up on, and logical \textit{rules}, such as if-then clauses or tree-induced rules.
+\\
 \textbf{Local vs Global Interpretability}, ranging from \textit{local} methods providing explanations based on individual samples, \textit{semi-local} methods,
 explaining model behaviour for sets of samples grouped by some criterion, to \textit{global} methods, which explain the network as a whole.
 
 % Evaluation
 Given its unclear definition, evaluating interpretability can be challenging. \citet[3]{DoshiVelez2017TowardsAR} propose a taxonomy to categorise
-possible evaluation methods based on their rigorousness.\\
+possible evaluation methods based on their rigorousness.
+\\
 \textbf{Application-grounded evaluation} evaluates interpretations directly with respect to the task, by having human experts evaluate the outcome and
-is therefore the most expensive and time-consuming of the three approaches.\\
+is therefore the most expensive and time-consuming of the three approaches.
+\\
 \textbf{Human-grounded metrics} is similar to application-grounded evaluation in that a human still evaluates the interpretations, but tries to simplify the task
 so that a layperson can do it. Human-grounded approaches are especially suitable if it's sufficient to validate the general concepts of a task. A typical evaluation
-set-up in this category is binary forced choice, where the human evaluator chooses, which of two generated explanations he prefers.\\
+set-up in this category is binary forced choice, where the human evaluator chooses, which of two generated explanations he prefers.
+\\
 \textbf{Functionally-grounded evaluation} is the least rigorous, but easiest to implement of the three. It assess explanatory quality according to some
 formally defined proxy for interpretability and is particularly useful in ranking different models if their model-class is already identified
 (e.g. via human-grounded evaluation) to be interpretable. The main challenge for functionally-grounded evaluation is finding a good proxy.
@@ -165,13 +171,17 @@ Another popular class of model-free optimizers are evolutionary algorithms (EAs)
 given appropriate implementation of operators.
 EAs are iteratively evolving a population of individuals (an individual is simply a hyperparameter configuration) of size $\mu$, where in each iteration (generation),
 $\lambda$\footnote{We distinguish between $\lambda\in\mathbb{N}$ when referring to the offspring size of EAs and $\boldsymbol\lambda\in\boldsymbol\Lambda$ when
-referring to a hyperparameter configuration.} offspring are generated via three operators \citep[pp. 10-14]{genetic_algos}.\\
+referring to a hyperparameter configuration.} offspring are generated via three operators \citep[pp. 10-14]{genetic_algos}.
+\\
 \textbf{Reproduction} samples an individual from the population to reproduce with probability proportional to its fitnes. For HPO, fitness usually refers to the
-performance metric the model resulting from the individual's HP configuration is evaluated on.\\
+performance metric the model resulting from the individual's HP configuration is evaluated on.
+\\
 \textbf{Crossover} selects two ``parents'' from the pool of reproducing individuals. An index $k$ is sampled at random and all HP values from
-index $k$ on are swapped, yielding two new ``children'' individuals.\\
+index $k$ on are swapped, yielding two new ``children'' individuals.
+\\
 \textbf{Mutation} randomly changes single HP values of an individual chosen for reproduction, e.g. by adding Gaussian noise to real values or flipping bits
-on binary values.\\
+on binary values.
+\\
 At the end of each generation, the EA keeps the best $\mu$ individuals, either only from the offspring (``$(\mu,\lambda)$-selection'') or more commonly from
 population and offspring (``$(\mu+\lambda)$-selection''), which is also called an ``elitist'' strategy, as it's guaranteed to keep the best individual.
 \citep[chap. 1.3]{feurer_hyperparameter_2019}
@@ -185,50 +195,63 @@ Another popular EA approach is Differential Evolution. Its populaton is randomly
 In each generation $g$, for each $\boldsymbol\lambda_{i,g}$ with $i=1,...,n$ it creates ``mutant vectors''
 $\boldsymbol\nu_{i,g+1}=\boldsymbol\lambda_{r_1,g}+F\cdot(\boldsymbol\lambda_{r_2,g}-\boldsymbol\lambda_{r_3,g})$,
 where $r_1,r_2,r_3\in\{1,...,n\}$ are mutually different random indices that also different from $i$ and $F\in[0,2]$ is constant.
-For crossover, it then generates a ``trial vector'' $\boldsymbol\upsilon_{i,g+1}=(\upsilon_{i,g+1}^{(1)},\upsilon_{i,g+1}^{(2)},...,\upsilon_{i,g+1}^{(N)})$ with
+For crossover, it then generates a ``trial vector'' $\boldsymbol\upsilon_{i,g+1}=(\upsilon_{i,g+1}^{(1)},\upsilon_{i,g+1}^{(2)},...,\upsilon_{i,g+1}^{(N)})^T$ with
 \begin{equation}
   \upsilon_{i,g+1}^{(j)} = \begin{dcases}
-    \nu_{i,g+1}^{(j)} & \text{if } p\le\text{CR}\text{ or } j=R \\
+    \nu_{i,g+1}^{(j)} & \text{if } u\le\text{CR}\text{ or } j=R \\
     \lambda_{i,g}^{(j)} & \text{else}
   \end{dcases}
 \end{equation}
-for a random index $R\in\{1,2,...,D\}$, sampled $p\sim U[0,1]$, and crossover constant $\text{CR}\in[0,1]$.
+for a random index $R\in\{1,2,...,D\}$, sampled $u\sim U[0,1]$, and crossover constant $\text{CR}\in[0,1]$.
 Selection is done by picking the better of $\boldsymbol\upsilon_{i,g+1}$ and $\boldsymbol\lambda_{i,g}$ with respect to fitness. \citep[p. 343]{differential_evolution}
 
-[model based]
-- contrast to model free, fit a surrogate model on blackbox problem + optimise this
-(Bayesian optimisation)
-- iterative algo comprising of
-  * surrogate model for black box problem, needs to be able to model mean + variance
-  * acquisition function, to decide which point to query next
-- in each iteration
-  * fit surrogate model on all data points (posterior distribution)
-  * get highest utility point from acquisition function for newly fitted surrogate model -> add to data points
-  -> hence Bayesian, get new query point given already previously fitted points
-  * acquisition function trades off exploration + exploitation of surrogate
-  * BO up to here from \citep[chap. 1.3.2]{feurer_hyperparameter_2019} + \citep[pp. 2-3]{frazier2018tutorialbayesianoptimization}
-- no optimising of model directly, instead iteratively optimise acquisition function
-- common choices for surrogate models
-  * \textbf{gaussian processes}
-    - pros
-      * fully specified by mean + covariance
-        - covariance function (aka kernel) solely determines quality of GP
-        - kernel as function of two points from search space, yields their covariance
-        % TODO: write down kernel equation, cf. p 10ff https://ieeexplore.ieee.org/document/7352306
-        - usual property of kernels: the closer points are in search space, the more strongly their correlation \citep[p. 5]{frazier2018tutorialbayesianoptimization}
-      * well-calibrated uncertainty estimates
-      * closed-form computability
-    - con: neither scales well in \# of data points nor in \# of HP dimensions BUT workaround: sparse GPs, approx full GP with small subset of original dataset
-  * \textbf{random forests}
-    - can handle complex search spaces (high-dim, categorical, hierarchical), unlike GPs
-    - computational complexity scales far better than GPs
-      * GPs $O(n^3)$ fitting, $O(n^2)$ predicting
-      * RFs $O(n \log n)$ fitting, $O(\log n)$ predicting
-- common choices for acquisition functions
-  % TODO: cf. p. 13 cf. p 10ff https://ieeexplore.ieee.org/document/7352306
-  * \textbf{expected improvement}
-  * \textbf{Thompson sampling}
-- all BO stuff if not specified differently comes from \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
+% model based
+Contrasting to model-free approaches, model-based methods fit a surrogate model on the target function and optimize the surrogate.
+Currently, one of the most popular model-based approaches is Bayesian Optimization (BO).
+BO is an iterative algorithm comprising a probabilistic surrogate model $\tilde{f}$ for the blackbox problem $f$ and an acquisition function.
+It maintains and continually extends a set of points it already evaluated on the target function.
+In each iteration, the posterior predictive distribution is determined by fitting the surrogate model on this set of points.
+The acquisition function then retrieves the highest utility point from the surrogate model and evaluates it on the target function, after which it adds the point
+to the set of queried points \citep[chap. 1.3.2]{feurer_hyperparameter_2019} and \citep[pp. 2f]{frazier2018tutorialbayesianoptimization}.
+Evidently, neither the target function nor the surrogate model are optimized directly. Rather, the acquisition function trades-off exploration and exploitation of
+the surrogate and is maximised to yield the next query point most likely to optimize the two objectives as defined by the acquisition function.
+\\
+Common choices for the acquisition function are Expected Improvement (Eq. \ref{eq-expected-improvement}) and Thompson Sampling (Eq. \ref{eq-thompson-sampling}).
+\begin{equation}
+  \text{EI}_t(\boldsymbol\lambda):=\mathbb{E}_t[(f(\boldsymbol\lambda)-f_t^*)^+]
+  \label{eq-expected-improvement}
+\end{equation}
+\textbf{Expected Improvement} computes the expected minimisation over the incumbent $f_t^*$ for evaluating the target function $f$ at query point $\boldsymbol\lambda$.
+$\mathbb{E}_t$ denotes the expectation under the posterior predictive distribution with $t$ query points, similarly, the current incumbent is the minimum value
+of the target function from previous evaluations $(\boldsymbol\lambda_{1:t},f(\boldsymbol\lambda_{1:t}))$. \citep[p. 7]{frazier2018tutorialbayesianoptimization}
+\begin{equation}
+  f^{(t)}\sim\tilde{f}_t
+  \label{eq-thompson-sampling}
+\end{equation}
+\textbf{Thompson Sampling}, on the other hand, can conceptually be described as drawing a candidate function $f^{(t)}$ from the posterior predictive distribution and
+minimising it to obtain the next query point for the target function. \citep[p. 161]{7352306}
+\\
+Composing the other part of BO, surrogate models need to be able to model mean and variance of its target function estimate.
+Commonly chosen models are Gaussian Processes (Eq. \ref{eq-gaussian-process}) and Random Forests.
+\begin{equation}
+  \text{GP}(m(\boldsymbol\lambda), k(\boldsymbol\lambda,\boldsymbol\lambda'))
+  \label{eq-gaussian-process}
+\end{equation}
+\textbf{Gaussian Processes} (GP) are fully specified by their mean and covariance functions and have closed-form solutions.
+The mean $m(\boldsymbol\lambda)$ fits all points already evaluated on the target function, while for the covariance or
+kernel function $k(\boldsymbol\lambda,\boldsymbol\lambda')$ it is desirable that points close to
+each other in HP space $\boldsymbol\Lambda$ exhibit stronger correlation than those far apart.
+The kernel function can be freely chosen, a common choices is the Gaussian (Eq. \ref{eq-kernel-gaussian}) kernel with
+hyperparameter $\alpha_0$. \citep[p. 5]{frazier2018tutorialbayesianoptimization}
+\begin{equation}
+  k(\boldsymbol\lambda,\boldsymbol\lambda')=\alpha_0 \exp(-\|\boldsymbol\lambda-\boldsymbol\lambda'\|_2^2)
+  \label{eq-kernel-gaussian}
+\end{equation}
+A drawback of Gaussian Processes is its poor scalability in number of data points and number of hyperparameters, although there exist workarounds approximating the full GP
+with only a subset of the samples. \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
+\\
+\textbf{Random Forests}, unlike GPs, can handle complex hyperparameter spaces even including categorical and hierarchical HPs. Their computational complexity is also far
+less, making them a popular alternative to Gaussian Processes. \citep[chap. 1.3.2]{feurer_hyperparameter_2019}
 
   
 \subsection{Neural Architecture Search (NAS)}
