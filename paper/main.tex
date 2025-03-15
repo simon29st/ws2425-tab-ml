@@ -397,6 +397,10 @@ Considering the scenario of only having individuals of one area in the objective
 area (i.e. the solutions from this area) would collapse the entire front estimate.
 Considering now the opposite, having multiple areas making up the Pareto front estimate, makes it stable: removing one area would not impact the estimate a lot,
 as it's still held up by other individuals. \citep[p. 185, pp. 189-192]{genetic_algos}
+A possible proxy for exploration of the Pareto front is the hypervolume contribution. The hypervolume contribution of individual
+$\boldsymbol\lambda\in\hat{\mathcal{P}}$ is the difference between the hypervolume of the entire estimated Pareto front vs the hypervolume of the front without the
+individual: $\text{CON}_{\hat{\mathcal{P}}}(\boldsymbol\lambda)=\text{HYP}(\hat{\mathcal{P}})-\text{HYP}(\hat{\mathcal{P}}\setminus\{\boldsymbol\lambda\})$,
+where $\text{HYP}(\hat{\mathcal{P}})$ denotes the hypervolume induced by the Pareto set $\hat{\mathcal{P}}$ \citep[p. 384]{10.5555/1943267.1943271}.
 
 
 %likely shouldn't be an entire section
@@ -616,8 +620,66 @@ This happened once for the dataset ``madeline'' after generation 9 and training 
       \label{fig-eagga-xgb-dhvs}
   \end{minipage}}
 \end{figure}
+As evident from Figures \ref{fig-test-dhvs}, \ref{fig-eagga-xgb-dhvs}, applying EAGGA to neural networks yields comparable performance to applying it to XGBoost,
+both with and without restricting the maximum tree depth.
+A direct comparison to unrestricted neural networks trained with regular stochastic gradient descent has not been made, as this would have led to a hypervolume of 0
+due to NF, NI, and NNM all being 1.
+Similar to $EAGGA_{\text{XGBoost}}$ and $EAGGA_{\text{XGBoost}_{\text{md2}}}$, our extension consistently outperforms the union of competitors.
+Unfortunately, due to time constraints, we were not able to compare the performance against a union of competitors including an unrestricted neural network
+instead of XGBoost, although we hypothesise that, given unrestricted NNs' struggle on tabular data compared to XGBoost, the outperformance over the union would
+be even greater.
+\\
+Examining the Pareto sets returned from training, which are accessible on our GitHub repository at ~/code/export/*.csv, we can observe a clear trend in the
+Pareto sets' models' hyperparameters:
+\begin{itemize}
+  \item the total number of layers is mostly 3 or 4, but goes as high as 7 for the Satellite (36) and diabetes (8) datasets
+  \item the nodes per hidden layer are mostly in the range between 3 and 6, but go as high as 12 on the diabetes (8) dataset
+  \item the dropout probability goes as high as 0.7 on the climate (18) and spambase (57) dataset, but is mostly in the 0.1 to 0.3 range
+\end{itemize}
+The returned group structures are more diverse:
+NF goes up to 1 for individuals in the Pareto sets of phoneme (5) and blood (4). Further datasets with low feature cardinality exhibt similarly high
+NF scores, with bankote (4) up to 0.75, climate (18) up to 0.67, and diabetes (8) up to 0.5. For the remainder, NF is much lower. The heightened NF for
+datasets with less features can be a possible consequence of shorter training times: on average, low feature cardinality datasets train quicker and thus
+for more generations than high cardinality datasets. This in turn means that their group structure space is far more likely to be exhaustively searched,
+with then most of the performance improvements coming from changes to the model's hyperparameters.
+As a consequence of the consistently low NF (except for low cardinality datasets), NI and NNM are equally very low, as they are directly dependent on the
+number of features included in the model.
+\\
+The contributions to the dominated hypervolumes are predominately low for the models in the Pareto set, often being below 0.1, with the most contribution
+often coming from the featureless learner. This is a sign for good and stable exploration of the Pareto front, as outlined in Section \ref{sec-moo-post}
+\\
+The loss graphs in Figure \ref{fig-es-losses} suggest that some models could have benefitted from longer training on some datasets, as some losses have not
+coverged when the early stopping criterion was triggered.
+This indicates that the criterion was likely triggered by a short-term spike, which could potentially be resolved by not comparing the current epoch's loss
+to the mean of the previous 100 epochs but, for instance, the mean of a range of more recent epochs to the last 100.
+This strategy, on the other hand, would then likely yield to even longer training periods on those datasets that clearly have converged, as evident by
+horizontal loss graphs.
+As the loss graphs remain horizontal and there is no uptick again, this would likely not be detrimental to model performance and the main ``risk'' would be
+more a expensive computation from longer trainings.
+\\
+The dominated hypervolume over generations in Figure \ref{fig-val-dhvs}
 
-- preliminary
+
+
+- dhv over generations Figure \ref{fig-val-dhvs}
+  * compute on val set, i.e. had 5 folds per individual
+    - NF, NI, NNM always the same for each fold
+    - but 5 different AUCs
+    -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
+  * artifacts / drops along y likely due to inconsistent computation of Pareto front by third-party library
+    - preliminary experiments on dummy pareto fronts with 10x4 metrics: noticed nds function returning different rankings for same front
+    - returned ranking switched back and forth between two only slightly different options (only 1 or 2 indices were swapped)
+    - not sure what caused this, as made same observation using another library that was planned as alternative
+    - thus unfortunately not fixable for me
+  * all but 3 datasets (2 of which only trained for 1 generation, aynway) show improvement of dominated hypervolume over generations
+  * BUT: absolute as well as relative improvement almost negligible -> no large final dhv decrease would we just have evaluated the models gotten from the detectors
+    - this was also the reason we didn't run EAGGA on philippine and gina simply without the detectors (as that's where they crashed) -> evidence suggested that detectors are vital to initial performance
+    - original paper supports this assumption \citep[Fig. 4, p. 545]{EAGGA}
+
+
+
+
+    - preliminary
   * our implementation of feature + interaction detectors likely tend to include  % belongs in "general algorithm"
     - more features + interactions for high p datasets
     - less for low p datasets
@@ -634,56 +696,6 @@ This happened once for the dataset ``madeline'' after generation 9 and training 
       * AdamW uses momentum
       * possible scenario: large momentum would yield negative weights, but after epoch they're clipped to [0,infty) + training stops due to early stopping
       * weight clipping very imperfect way of enforcing monotonicity, but currently in pytorch unfortunately only way to implement this
-- Figure \ref{fig-test-dhvs}
-  * suggests comparable performance to XGBoost EAGGA
-  * did not compare to unrestricted NN, would not be sensible, as NF, NI, NNM would be 1, hence hypervolume = 0, as values along 3 dimensions would be at reference point
-  * as XGBoost EAGGA, NN EAGGA consistently outperforms union of competitors as evident from \citep[Figure 2]{EAGGA}
-  * unfortunately due to time constraints no own union comparison with NN instead of XGBoost
-- overview over pareto sets can be accessed on our github repo at ~/code/export/*.csv
-  * NN HPs
-    - total layers mostly 3-4, most commonly 3, goes as high as 7 (Satellite (36), diabetes (8))
-    - nodes per hidden layer mostly 3-6, goes as high as 12 (diabetes (8))
-    - p dropout goes as high as 0.7 (climate (18), spambase (57)), but mostly in the 0.1 to 0.3 range
-  * group structures
-    - great diversity in NF across datasets
-      * phoneme (5) up to 1
-      * blood (4) up to 1
-      * banknote (4) up to 0.75
-      * diabetes (8) up to 0.5
-      * climate (18) up to 0.67
-      -> low p datasets in the benchmark tend to have higher NF
-        - possible consequence of shorter evaluation time
-        - low p datasets have much higher \# generations
-        - group structure space much more likely to be exhausted, i.e. more exploration of NN hps
-    - NI, NNM consequently (bounded by NF, can never be more than max \# for respective \# included features) rather low
-  * dhv contributions
-    % TODO: put explanation in line 400, don't introduce new topic here
-    - measures contribution of an individual to the hypervolume, i.e. difference between hypervolume of entire pareto front vs hypervolume of pareto front without
-      individual $\boldsymbol\lambda$: $\text{CON}_{\mathcal{P}}(\boldsymbol\lambda)=\text{HYP}(\mathcal{P})-\text{HYP}(\mathcal{P}\setminus\{\boldsymbol\lambda\})$,
-      where $\text{HYP}(\mathcal{P})$ denotes the hypervolume induced by the pareto set $\mathcal{P}$ \citep[p. 384]{10.5555/1943267.1943271}
-    - predominately low for fitted models
-    - mostly highest for featureless learner predicting majority class
-    -> sign of good exploration of pareto front + stable estimate, refer Section \ref{sec-moo-post}
-- loss graphs Figure \ref{fig-es-losses}
-  * suggests models could have benefitted from longer training on some datasets, as some loss curves haven't converged when stopping criterion hit
-  * crit was likely triggered by short-term spike, thus could potentially be resolved by comparing average of last k losses against average of >patience< losses prior
-    to that to not be as exposed to short-term spikes in loss
-  * on other datasets, graphs suggest earlier stop would have been totally fine as the networks have long converged, but longer training likely not an issue as loss
-    graphs come from early stopping dataset portion, which is disjunct from training set
-- dhv over generations Figure \ref{fig-val-dhvs}
-  * compute on val set, i.e. had 5 folds per individual
-    - NF, NI, NNM always the same for each fold
-    - but 5 different AUCs
-    -> hypervolume of (mean(AUC 1, AUC 2, ..., AUC 5), NF, NI, NNM)
-  * artifacts / drops along y likely due to inconsistent computation of Pareto front by third-party library
-    - preliminary experiments on dummy pareto fronts with 10x4 metrics: noticed nds function returning different rankings for same front
-    - returned ranking switched back and forth between two only slightly different options (only 1 or 2 indices were swapped)
-    - not sure what caused this, as made same observation using another library that was planned as alternative
-    - thus unfortunately not fixable for me
-  * all but 3 datasets (2 of which only trained for 1 generation, aynway) show improvement of dominated hypervolume over generations
-  * BUT: absolute as well as relative improvement almost negligible -> no large final dhv decrease would we just have evaluated the models gotten from the detectors
-    - this was also the reason we didn't run EAGGA on philippine and gina simply without the detectors (as that's where they crashed) -> evidence suggested that detectors are vital to initial performance
-    - original paper supports this assumption \citep[Fig. 4, p. 545]{EAGGA}
 
 
 \section{Conclusion and Future Outlook}
