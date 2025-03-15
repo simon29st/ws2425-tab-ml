@@ -356,7 +356,7 @@ a significant improvement in another that would have been missed if the problem 
 \\
 Aside from the usual baselines grid and random search there are multi-objetive Bayesian Optimization adaptations, mainly using one of two approaches:
 \begin{enumerate}[label*=\arabic*.]
-  \item Fitting a single surrogate model on scalarized objectives. \citet[pp. 54-56]{ParEGO} propose \textit{ParEGO}, which employs the augemented Tchebycheff function as
+  \item Fitting a single surrogate model on scalarized objectives. \citet[pp. 54-56]{ParEGO} propose \textit{ParEGO}, which employs the augmented Tchebycheff function as
         scalarization to ensure the Pareto front is explored sufficiently.
   \item Fitting one surrogate per objective, then either 
   \begin{enumerate}[label*=\arabic*.]
@@ -695,23 +695,25 @@ constrained optimisation in pytorch.
 \section{Conclusion and Future Outlook}
 % Conclusion
 The EAGGA framework has been shown to be able to preserve performance while increasing interpretabiltiy of XGBoost models on tabular data, which has long been 
-a challenging discipline for neural networks. Following recent research suggesting that regularisation can improve
-performance \citep[8]{NEURIPS2021_c902b497}, we extended EAGGA \citep{EAGGA} to neural networks, utilising its regularising properties to achieve similar
-performance of neural networks as performance achieved with XGBoost and simultaneously increase interpretability of this notoriously uninterpretable model class.
+a challenging discipline for neural networks. Following recent research suggesting that regularisation can improve NN performance on
+tabular data \citep[8]{NEURIPS2021_c902b497}, we extend EAGGA \citep{EAGGA} to neural networks, utilising its regularising properties to achieve similar
+performance with neural networks as with XGBoost and simultaneously increase interpretability of this notoriously uninterpretable model class.
 As a consequence, we propose a new architecture allowing to model the equivalence relations of the EAGGA framework.
 We create a model whose interpretation is active, attributional, and global in the framework of \citet[chap. 2]{survey_NN_interpretability}, and find
-overall performance, as measured on the dominated hypervolume of (AUC, NF, NI, NNM) to be comparable to that of XGBoost fitted usign EAGGA.
+overall performance, as measured on the dominated hypervolume of (AUC, NF, NI, NNM) to be comparable to that of XGBoost fitted using EAGGA.
+\\
 
-(Future Outlook)
-- due to high complexity of EAs, a MOBO implementation on augmented space (cf section \ref{sec-eagga}) would be very nice
-- theoretical idea: use surrogate model with prior computed based on feasible combinations of equivalence classes
-  * high value, 0 uncertainty around combinations that make no sense
-    - e.g. those with a feature in multiple groups
-    - e.g. those with two features in one group, one having monot incr, one monot decr
-  * high uncertainty around combinations that would make sense to encourage exploring these regions as with GPs
-  * this would likely prove to be computationally very expensive for higher numbers of features
-- as more practical alternative: unrestricted MO BO on extended search space, cf section \ref{sec-eagga}, then acquisiton function taking into
-  account the constraints, e.g. as presented by \citep{10.5555/3020751.3020778}, \citep{perrone2019constrainedbayesianoptimizationmaxvalue}
+% Future Outlook
+Due to the low sample-efficiency of evolutionary algorithms, a multi-objective Bayesian Optimization variant on the augmented search space
+(refer Section \ref{sec-eagga}) could deliver the strongest training time improvement.
+There are two avenues to explore this, either via a change to the surrogate model or by adapting the acquisition function.
+A surrogate model using a custom computed prior with high values and no uncertainty in unfeasible regions and regular uncertainty in feasible regions could be a solution.
+An unfeasible region is for instance one, where a feature is in multiple equivalence classes, or where two features in the same equivalence class have opposing
+monotonicity constraints.
+The second option, adapting the acquisition function, may prove to be computationally less complex for datasets with many features.
+This would mean using an unrestricted surrogate model and then taking account the constraints in the acquisition function. Similar approaches have been
+tried on unrelated problems by \citep{10.5555/3020751.3020778} and \citep{perrone2019constrainedbayesianoptimizationmaxvalue}.
+
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
