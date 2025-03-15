@@ -6,7 +6,6 @@
   isbn = {9798400701191},
   publisher = {Association for Computing Machinery},
   address = {New York, NY, USA},
-  url = {https://doi.org/10.1145/3583131.3590380},
   doi = {10.1145/3583131.3590380},
   abstract = {We present a model-agnostic framework for jointly optimizing the predictive performance and interpretability of supervised machine learning models for tabular data. Interpretability is quantified via three measures: feature sparsity, interaction sparsity of features, and sparsity of non-monotone feature effects. By treating hyperparameter optimization of a machine learning algorithm as a multi-objective optimization problem, our framework allows for generating diverse models that trade off high performance and ease of interpretability in a single optimization run. Efficient optimization is achieved via augmentation of the search space of the learning algorithm by incorporating feature selection, interaction and monotonicity constraints into the hyperparameter search space. We demonstrate that the optimization problem effectively translates to finding the Pareto optimal set of groups of selected features that are allowed to interact in a model, along with finding their optimal monotonicity constraints and optimal hyperparameters of the learning algorithm itself. We then introduce a novel evolutionary algorithm that can operate efficiently on this augmented search space. In benchmark experiments, we show that our framework is capable of finding diverse models that are highly competitive or outperform state-of-the-art XGBoost or Explainable Boosting Machine models, both with respect to performance and interpretability.},
   booktitle = {Proceedings of the Genetic and Evolutionary Computation Conference},
@@ -20,6 +19,7 @@
 
 % [1 Introduction]
 
+% no doi available
 @inproceedings{NEURIPS2021_c902b497,
  author = {Kadra, Arlind and Lindauer, Marius and Hutter, Frank and Grabocka, Josif},
  booktitle = {Advances in Neural Information Processing Systems},
@@ -45,13 +45,13 @@
   abstract = {We propose a new method for estimation in linear models. The ‘lasso’ minimizes the residual sum of squares subject to the sum of the absolute value of the coefficients being less than a constant. Because of the nature of this constraint it tends to produce some coefficients that are exactly 0 and hence gives interpretable models. Our simulation studies suggest that the lasso enjoys some of the favourable properties of both subset selection and ridge regression. It produces interpretable models like subset selection and exhibits the stability of ridge regression. There is also an interesting relationship with recent work in adaptive function estimation by Donoho and Johnstone. The lasso idea is quite general and can be applied in a variety of statistical models: extensions to generalized regression models and tree-based models are briefly described.},
   issn = {0035-9246},
   doi = {10.1111/j.2517-6161.1996.tb02080.x},
-  url = {https://doi.org/10.1111/j.2517-6161.1996.tb02080.x},
 }
 
 
+% http://www.jstor.org/stable/1267351
 @article{ridge,
  ISSN = {00401706},
- URL = {http://www.jstor.org/stable/1267351},
+ doi = {10.2307/1267351},
  abstract = {In multiple regression it is shown that parameter estimates based on minimum residual sum of squares have a high probability of being unsatisfactory, if not incorrect, if the prediction vectors are not orthogonal. Proposed is an estimation procedure based on adding small positive quantities to the diagonal of X′X. Introduced is the ridge trace, a method for showing in two dimensions the effects of nonorthogonality. It is then shown how to augment X′X to obtain biased estimates with smaller mean square error.},
  author = {Arthur E. Hoerl and Robert W. Kennard},
  journal = {Technometrics},
@@ -65,7 +65,7 @@
 }
 
 
-
+% https://arxiv.org/abs/1207.0580
 @misc{hinton2012improvingneuralnetworkspreventing,
   title={Improving neural networks by preventing co-adaptation of feature detectors}, 
   author={Geoffrey E. Hinton and Nitish Srivastava and Alex Krizhevsky and Ilya Sutskever and Ruslan R. Salakhutdinov},
@@ -73,10 +73,11 @@
   eprint={1207.0580},
   archivePrefix={arXiv},
   primaryClass={cs.NE},
-  url={https://arxiv.org/abs/1207.0580}, 
+  doi={10.48550/arXiv.1207.0580}
 }
 
 
+% https://www.sciencedirect.com/science/article/pii/S0893608005801224
 @article{early_stopping,
   title = {Improving model selection by nonconvergent methods},
   journal = {Neural Networks},
@@ -85,8 +86,7 @@
   pages = {771-783},
   year = {1993},
   issn = {0893-6080},
-  doi = {https://doi.org/10.1016/S0893-6080(05)80122-4},
-  url = {https://www.sciencedirect.com/science/article/pii/S0893608005801224},
+  doi = {10.1016/S0893-6080(05)80122-4},
   author = {William Finnoff and Ferdinand Hergert and Hans Georg Zimmermann},
   keywords = {Model selection, Generalization, Weight pruning, Penalty terms, Cross-validation, Nonconvergent training, Dynamic topology modifications},
   abstract = {Many techniques for model selection in the field of neural networks correspond to well established statistical methods. For example, architecture modifications based on test variables calculated after convergence of the training process can be viewed as part of a hypothesis testing search, and the use of complexity penalty terms is essentially a type of regularization or biased regression. The method of “stopped” or “cross-validation” training, on the other hand, in which an oversized network is trained until the error on a further validation set of examples deteriorates, then training is stopped, is a true innovation since model selection doesn't require convergence of the training process. Here, the training process is used to perform a directed search of the parameter space for a model which doesn't overfit the data and thus demonstrates superior generalization performance. In this paper we show that this performance can be significantly enhanced by expanding the “nonconvergent method” of stopped training to include dynamic topology modifications (dynamic weight pruning) and modified complexity penalty term methods in which the weighting of the penalty term is adjusted during the training process. On an extensive sequence of simulation examples we demonstrate the general superiority of the “extended” nonconvergent methods compared to classical penalty term methods, simple stopped training, and methods which only vary the number of hidden units.}
@@ -96,6 +96,7 @@
 
 % [2 Background and Related Work]
 
+% no doi available
 @inproceedings{Zach2019InterpretabilityOD,
   title={Interpretability of deep neural networks},
   author={J. Zach},
@@ -104,6 +105,7 @@
 }
 
 
+% https://www.sciencedirect.com/science/article/pii/S0925231224009755
 @article{review_NN_interpretability,
   title = {Interpretability of deep neural networks: A review of methods, classification and hardware},
   journal = {Neurocomputing},
@@ -111,8 +113,7 @@
   pages = {128204},
   year = {2024},
   issn = {0925-2312},
-  doi = {https://doi.org/10.1016/j.neucom.2024.128204},
-  url = {https://www.sciencedirect.com/science/article/pii/S0925231224009755},
+  doi = {10.1016/j.neucom.2024.128204},
   author = {Thanasis Antamis and Anastasis Drosou and Thanasis Vafeiadis and Alexandros Nizamis and Dimosthenis Ioannidis and Dimitrios Tzovaras},
   keywords = {XAI, Deep neural networks, xDNN, Survey},
   abstract = {Artificial intelligence, and especially deep neural networks, have evolved substantially in the recent years, infiltrating numerous domains of applications, often greatly impactful to society’s well-being. As a result, the need to understand how these models operate in depth and to access explanations of their decisions has become more vital than ever. Tending to this demand, the following paper aims to provide a thorough overview of the methods that have so far been developed to explain deep neural networks. Key aspects of explainability are defined and a straightforward classification of existing approaches is introduced, along with numerous examples. The task of realizing these methods on hardware is also discussed to complete the understanding of their application.}
@@ -132,6 +133,7 @@
 }
 
 
+% no doi available
 @book{molnar2022,
   title      = {Interpretable Machine Learning},
   author     = {Christoph Molnar},
@@ -142,12 +144,13 @@
 }
 
 
+% https://api.semanticscholar.org/CorpusID:11319376
 @article{DoshiVelez2017TowardsAR,
   title={Towards A Rigorous Science of Interpretable Machine Learning},
   author={Finale Doshi-Velez and Been Kim},
   journal={arXiv: Machine Learning},
   year={2017},
-  url={https://api.semanticscholar.org/CorpusID:11319376}
+  doi={10.48550/arXiv.1702.08608}
 }
 
 
@@ -169,10 +172,12 @@
     editor = {Hutter, Frank and Kotthoff, Lars and Vanschoren, Joaquin},
     publisher = {Springer},
     title = {Automatic Machine Learning: Methods, Systems, Challenges},
+    doi={10.1007/978-3-030-05318-5},
     year = {2019}
 }
 
 
+% no doi available
 @book{genetic_algos,
   author = {Goldberg, David E.},
   title = {Genetic Algorithms in Search, Optimization and Machine Learning},
@@ -181,21 +186,23 @@
   publisher = {Addison-Wesley Longman Publishing Co., Inc.},
   address = {USA},
   edition = {1st},
-  abstract = {From the Publisher:This book brings together - in an informal and tutorial fashion - the computer techniques, mathematical tools, and research results that will enable both students and practitioners to apply genetic algorithms to problems in many fields. Major concepts are illustrated with running examples, and major algorithms are illustrated by Pascal computer programs. No prior knowledge of GAs or genetics is assumed, and only a minimum of computer programming and mathematics background is required.}
+  abstract = {From the Publisher:This book brings together - in an informal and tutorial fashion - the computer techniques, mathematical tools, and research results that will enable both students and practitioners to apply genetic algorithms to problems in many fields. Major concepts are illustrated with running examples, and major algorithms are illustrated by Pascal computer programs. No prior knowledge of GAs or genetics is assumed, and only a minimum of computer programming and mathematics background is required.},
 }
 
 
+% https://arxiv.org/abs/1604.00772
 @misc{hansen2023cmaevolutionstrategytutorial,
-      title={The CMA Evolution Strategy: A Tutorial}, 
-      author={Nikolaus Hansen},
-      year={2023},
-      eprint={1604.00772},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/1604.00772}, 
+  title={The CMA Evolution Strategy: A Tutorial}, 
+  author={Nikolaus Hansen},
+  year={2023},
+  eprint={1604.00772},
+  archivePrefix={arXiv},
+  primaryClass={cs.LG},
+  doi={10.48550/arXiv.1604.00772}
 }
 
 
+% https://doi.org/10.1023/A:1008202821328
 @Article{differential_evolution,
   author={Storn, Rainer and Price, Kenneth},
   title={Differential Evolution -- A Simple and Efficient Heuristic for global Optimization over Continuous Spaces},
@@ -209,10 +216,10 @@
   abstract={A new heuristic approach for minimizing possiblynonlinear and non-differentiable continuous spacefunctions is presented. By means of an extensivetestbed it is demonstrated that the new methodconverges faster and with more certainty than manyother acclaimed global optimization methods. The newmethod requires few control variables, is robust, easyto use, and lends itself very well to parallelcomputation.},
   issn={1573-2916},
   doi={10.1023/A:1008202821328},
-  url={https://doi.org/10.1023/A:1008202821328}
 }
 
 
+% https://arxiv.org/abs/1807.02811
 @misc{frazier2018tutorialbayesianoptimization,
   title={A Tutorial on Bayesian Optimization}, 
   author={Peter I. Frazier},
@@ -220,7 +227,7 @@
   eprint={1807.02811},
   archivePrefix={arXiv},
   primaryClass={stat.ML},
-  url={https://arxiv.org/abs/1807.02811}, 
+  doi={10.48550/arXiv.1807.02811}
 }
 
 
@@ -237,11 +244,11 @@
 }
 
 
+% http://dx.doi.org/10.1109/TNNLS.2022.3229161
 @article{Borisov_2024,
   title={Deep Neural Networks and Tabular Data: A Survey},
   volume={35},
   ISSN={2162-2388},
-  url={http://dx.doi.org/10.1109/TNNLS.2022.3229161},
   DOI={10.1109/tnnls.2022.3229161},
   number={6},
   journal={IEEE Transactions on Neural Networks and Learning Systems},
@@ -252,6 +259,7 @@
 }
 
 
+% https://arxiv.org/abs/1611.01578
 @misc{zoph2017neuralarchitecturesearchreinforcement,
   title={Neural Architecture Search with Reinforcement Learning}, 
   author={Barret Zoph and Quoc V. Le},
@@ -259,19 +267,22 @@
   eprint={1611.01578},
   archivePrefix={arXiv},
   primaryClass={cs.LG},
-  url={https://arxiv.org/abs/1611.01578}, 
+  doi={10.48550/arXiv.1611.01578}, 
 }
 
 
+% https://openaccess.thecvf.com/content_cvpr_2018/papers/Zoph_Learning_Transferable_Architectures_CVPR_2018_paper.pdf
 @InProceedings{Zoph_2018_CVPR,
   author = {Zoph, Barret and Vasudevan, Vijay and Shlens, Jonathon and Le, Quoc V.},
   title = {Learning Transferable Architectures for Scalable Image Recognition},
   booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
   month = {June},
-  year = {2018}
+  year = {2018},
+  doi={10.1109/CVPR.2018.00907}
 }
 
 
+% https://arxiv.org/abs/1606.02492
 @misc{saxena2017convolutionalneuralfabrics,
   title={Convolutional Neural Fabrics}, 
   author={Shreyas Saxena and Jakob Verbeek},
@@ -279,10 +290,11 @@
   eprint={1606.02492},
   archivePrefix={arXiv},
   primaryClass={cs.CV},
-  url={https://arxiv.org/abs/1606.02492}, 
+  doi={10.48550/arXiv.1606.02492}
 }
 
 
+% https://doi.org/10.1145/3610536
 @article{10.1145/3610536,
   author = {Karl, Florian and Pielok, Tobias and Moosbauer, Julia and Pfisterer, Florian and Coors, Stefan and Binder, Martin and Schneider, Lennart and Thomas, Janek and Richter, Jakob and Lang, Michel and Garrido-Merch\'{a}n, Eduardo C. and Branke, Juergen and Bischl, Bernd},
   title = {Multi-Objective Hyperparameter Optimization in Machine Learning—An Overview},
@@ -292,7 +304,6 @@
   address = {New York, NY, USA},
   volume = {3},
   number = {4},
-  url = {https://doi.org/10.1145/3610536},
   doi = {10.1145/3610536},
   abstract = {Hyperparameter optimization constitutes a large part of typical modern machine learning (ML) workflows. This arises from the fact that ML methods and corresponding preprocessing steps often only yield optimal performance when hyperparameters are properly tuned. But in many applications, we are not only interested in optimizing ML pipelines solely for predictive accuracy; additional metrics or constraints must be considered when determining an optimal configuration, resulting in a multi-objective optimization problem. This is often neglected in practice, due to a lack of knowledge and readily available software implementations for multi-objective hyperparameter optimization. In this work, we introduce the reader to the basics of multi-objective hyperparameter optimization and motivate its usefulness in applied ML. Furthermore, we provide an extensive survey of existing optimization strategies from the domains of evolutionary algorithms and Bayesian optimization. We illustrate the utility of multi-objective optimization in several specific ML applications, considering objectives such as operating conditions, prediction time, sparseness, fairness, interpretability, and robustness.},
   journal = {ACM Trans. Evol. Learn. Optim.},
@@ -303,6 +314,7 @@
 }
 
 
+% https://doi.org/10.1162/evco.1994.2.3.221
 @article{NSGA,
   author = {Srinivas, N. and Deb, Kalyanmoy},
   title = {Multiobjective optimization using nondominated sorting in genetic algorithms},
@@ -313,7 +325,6 @@
   volume = {2},
   number = {3},
   issn = {1063-6560},
-  url = {https://doi.org/10.1162/evco.1994.2.3.221},
   doi = {10.1162/evco.1994.2.3.221},
   abstract = {In trying to solve multiobjective optimization problems, many traditional methods scalarize the objective vector into a single objective. In those cases, the obtained solution is highly sensitive to the weight vector used in the scalarization process and demands that the user have knowledge about the underlying problem. Moreover, in solving multiobjective problems, designers may be interested in a set of Pareto-optimal points, instead of a single point. Since genetic algorithms (GAs) work with a population of points, it seems natural to use GAs in multiobjective optimization problems to capture a number of solutions simultaneously. Although a vector evaluated GA (VEGA) has been implemented by Schaffer and has been tried to solve a number of multiobjective problems, the algorithm seems to have bias toward some regions. In this paper, we investigate Goldberg's notion of nondominated sorting in GAs along with a niche and speciation method to find multiple Pareto-optimal points simultaneously. The proof-of-principle results obtained on three problems used by Schaffer and others suggest that the proposed method can be extended to higher dimensional and more difficult multiobjective problems. A number of suggestions for extension and application of the algorithm are also discussed.},
   journal = {Evol. Comput.},
@@ -324,6 +335,7 @@
 }
 
 
+% https://www.sciencedirect.com/science/article/pii/S0360319922060505
 @article{lexicographic_MOO,
   title = {A review of hydrogen production and supply chain modeling and optimization},
   journal = {International Journal of Hydrogen Energy},
@@ -332,8 +344,7 @@
   pages = {13731-13755},
   year = {2023},
   issn = {0360-3199},
-  doi = {https://doi.org/10.1016/j.ijhydene.2022.12.242},
-  url = {https://www.sciencedirect.com/science/article/pii/S0360319922060505},
+  doi = {10.1016/j.ijhydene.2022.12.242},
   author = {Jefferson A. Riera and Ricardo M. Lima and Omar M. Knio},
   abstract = {This paper reviews recent optimization models for hydrogen supply chains and production. Optimization is a central component of systematic methodologies to support hydrogen expansion. Hydrogen production is expected to evolve in the coming years to help replace fossil fuels; these high expectations arise from the potential to produce low-carbon hydrogen via electrolysis using electricity generated by renewable sources. However, hydrogen is currently mainly used in refinery and industrial operations; therefore, physical infrastructures for transmission, distribution, integration with other energy systems, and efficient hydrogen production processes are lacking. Given the potential of hydrogen, the greenfield state of infrastructures, and the variability of renewable sources, systematic methodologies are needed to reach competitive hydrogen prices, and design hydrogen supply chains. Future research topics are identified: 1) improved hydrogen demand projections, 2) integrated sector modeling, 3) improving temporal and spatial resolutions, 4) accounting for climate change, 5) new methods to address sophisticated models.}
 }
@@ -380,6 +391,7 @@
 
 % [3 Experimental Results and Discussion]
 
+% https://people.mpi-inf.mpg.de/~kbringma/paper/J2010ECJ.pdf
 @article{10.5555/1943267.1943271,
   author = {Bringmann, Karl and Friedrich, Tobias},
   title = {An efficient algorithm for computing hypervolume contributions**},
@@ -394,12 +406,14 @@
   journal = {Evol. Comput.},
   month = sep,
   pages = {383–402},
-  numpages = {20}
+  numpages = {20},
+  doi={10.1162/EVCO_a_00012}
 }
 
 
 % [6 Future Outlook]
 
+% no doi available
 % http://auai.org/uai2014/proceedings/individuals/107.pdf
 @inproceedings{10.5555/3020751.3020778,
   author = {Gelbart, Michael A. and Snoek, Jasper and Adams, Ryan P.},
@@ -416,6 +430,8 @@
   series = {UAI'14}
 }
 
+
+% https://arxiv.org/abs/1910.07003
 @misc{perrone2019constrainedbayesianoptimizationmaxvalue,
   title={Constrained Bayesian Optimization with Max-Value Entropy Search}, 
   author={Valerio Perrone and Iaroslav Shcherbatyi and Rodolphe Jenatton and Cedric Archambeau and Matthias Seeger},
@@ -423,7 +439,7 @@
   eprint={1910.07003},
   archivePrefix={arXiv},
   primaryClass={stat.ML},
-  url={https://arxiv.org/abs/1910.07003}, 
+  doi={10.48550/arXiv.1910.07003} 
 }
 
 
@@ -445,7 +461,6 @@
   volume = {15},
   number = {2},
   issn = {1931-0145},
-  url = {https://doi.org/10.1145/2641190.2641198},
   doi = {10.1145/2641190.2641198},
   abstract = {Many sciences have made significant breakthroughs by adopting online tools that help organize, structure and mine information that is too detailed to be printed in journals. In this paper, we introduce OpenML, a place for machine learning researchers to share and organize data in fine detail, so that they can work more effectively, be more visible, and collaborate with others to tackle harder problems. We discuss how OpenML relates to other examples of networked science and what benefits it brings for machine learning research, individual scientists, as well as students and practitioners.},
   journal = {SIGKDD Explor. Newsl.},
@@ -453,6 +468,7 @@
   pages = {49–60},
   numpages = {12}
 }
+% no doi found
 % OpenML Python package, cf. https://github.com/openml/openml-python
 @article{OpenMLPython,
   author  = {Matthias Feurer and Jan N. van Rijn and Arlind Kadra and Pieter Gijsbers and Neeratyoy Mallik and Sahithya Ravi and Andreas Müller and Joaquin Vanschoren and Frank Hutter},
@@ -467,6 +483,7 @@
 
 
 % NumPy, cf. https://numpy.org/citing-numpy/
+% https://doi.org/10.1038/s41586-020-2649-2
 @Article{         NumPy,
   title         = {Array programming with {NumPy}},
   author        = {Charles R. Harris and K. Jarrod Millman and St{\'{e}}fan J.
@@ -487,12 +504,12 @@
   pages         = {357--362},
   doi           = {10.1038/s41586-020-2649-2},
   publisher     = {Springer Science and Business Media {LLC}},
-  url           = {https://doi.org/10.1038/s41586-020-2649-2} 
 }
 
 
 % pandas, cf. https://pandas.pydata.org/about/citing.html
 % Sagemaker uses v1.5.3, cf. https://zenodo.org/records/7549438
+% https://doi.org/10.5281/zenodo.7549438
 @software{pandas1,
   author       = {The pandas development team},
   title        = {pandas-dev/pandas: Pandas},
@@ -501,7 +518,6 @@
   publisher    = {Zenodo},
   version      = {v1.5.3},
   doi          = {10.5281/zenodo.7549438},
-  url          = {https://doi.org/10.5281/zenodo.7549438},
 }
 
 @InProceedings{ pandas2,
@@ -516,6 +532,7 @@
 
 
 % pytorch, cf. https://github.com/pytorch/pytorch/blob/main/CITATION.cff
+% https://doi.org/10.1145/3620665.3640366
 @inproceedings{PyTorch,
   author = {Ansel, Jason and Yang, Edward and He, Horace and Gimelshein, Natalia and Jain, Animesh and Voznesensky, Michael and Bao, Bin and Bell, Peter and Berard, David and Burovski, Evgeni and Chauhan, Geeta and Chourdia, Anjali and Constable, Will and Desmaison, Alban and DeVito, Zachary and Ellison, Elias and Feng, Will and Gong, Jiong and Gschwind, Michael and Hirsh, Brian and Huang, Sherlock and Kalambarkar, Kshiteej and Kirsch, Laurent and Lazos, Michael and Lezcano, Mario and Liang, Yanbo and Liang, Jason and Lu, Yinghai and Luk, C. K. and Maher, Bert and Pan, Yunjie and Puhrsch, Christian and Reso, Matthias and Saroufim, Mark and Siraichi, Marcos Yukio and Suk, Helen and Zhang, Shunting and Suo, Michael and Tillet, Phil and Zhao, Xu and Wang, Eikan and Zhou, Keren and Zou, Richard and Wang, Xiaodong and Mathews, Ajit and Wen, William and Chanan, Gregory and Wu, Peng and Chintala, Soumith},
   title = {PyTorch 2: Faster Machine Learning Through Dynamic Python Bytecode Transformation and Graph Compilation},
@@ -523,7 +540,6 @@
   isbn = {9798400703850},
   publisher = {Association for Computing Machinery},
   address = {New York, NY, USA},
-  url = {https://doi.org/10.1145/3620665.3640366},
   doi = {10.1145/3620665.3640366},
   abstract = {This paper introduces two extensions to the popular PyTorch machine learning framework, TorchDynamo and TorchInductor, which implement the torch.compile feature released in PyTorch 2. TorchDynamo is a Python-level just-in-time (JIT) compiler that enables graph compilation in PyTorch programs without sacrificing the flexibility of Python. It achieves this by dynamically modifying Python bytecode before execution and extracting sequences of PyTorch operations into an FX graph, which is then JIT compiled using one of many extensible backends. TorchInductor is the default compiler backend for TorchDynamo, which translates PyTorch programs into OpenAI's Triton for GPUs and C++ for CPUs. Results show that TorchDynamo is able to capture graphs more robustly than prior approaches while adding minimal overhead, and TorchInductor is able to provide a 2.27\texttimes{} inference and 1.41\texttimes{} training geometric mean speedup on an NVIDIA A100 GPU across 180+ real-world models, which outperforms six other compilers. These extensions provide a new way to apply optimizations through compilers in eager mode frameworks like PyTorch.},
   booktitle = {Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2},
@@ -534,6 +550,7 @@
 }
 
 
+% no doi found
 % scikit-learn, cf. https://scikit-learn.org/stable/about.html
 @article{scikit-learn,
   title={Scikit-learn: Machine Learning in {P}ython},
@@ -544,10 +561,12 @@
   journal={Journal of Machine Learning Research},
   volume={12},
   pages={2825--2830},
-  year={2011}
+  year={2011},
+  url={https://www.jmlr.org/papers/v12/pedregosa11a.html}
 }
 
 
+% https://rdcu.be/b08Wh
 % scipy, cf. https://scipy.org/citing-scipy/
 @ARTICLE{SciPy,
   author  = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and
@@ -569,7 +588,6 @@
   year    = {2020},
   volume  = {17},
   pages   = {261--272},
-  adsurl  = {https://rdcu.be/b08Wh},
   doi     = {10.1038/s41592-019-0686-2},
 }
 
@@ -583,9 +601,11 @@
   volume={8},
   number={},
   pages={89497-89509},
+  doi={10.1109/ACCESS.2020.2990567}
 }
 
 
+% https://doi.org/10.5281/zenodo.14231923
 % tqdm, cf. https://github.com/tqdm/tqdm + https://zenodo.org/records/14231923
 @software{tqdm,
   author       = {Casper da Costa-Luis and
@@ -626,7 +646,6 @@
   publisher    = {Zenodo},
   version      = {v4.67.1},
   doi          = {10.5281/zenodo.14231923},
-  url          = {https://doi.org/10.5281/zenodo.14231923},
   swhid        = {swh:1:dir:4556fa8b9e2bffacf634b5378660ecb3db68431e
                    ;origin=https://doi.org/10.5281/zenodo.595120;visi
                    t=swh:1:snp:3b7ead939423abc779ad7715fdd3e6f2a93e7e
