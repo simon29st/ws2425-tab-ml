@@ -466,6 +466,7 @@ Our work extends EAGGA to neural networks. We chose this model class for several
 \subsection{Overall Algorithm}
 We implement EAGGA largely as described by \citet{EAGGA} with only minor changes due to no straightforward transferability either due to different implementations
 of some classes and functions in R compared to Python or differences in model properties between XGBoost and neural nets.\\
+% TODO: after architectural details:
 Our NNs use the following hyperparameters initialised as described
 \begin{itemize}
   \item Total number of layers $\in\{3, ..., 10\}$, initialised from a truncated Geometric distribution with $\pi=0.5$.
@@ -502,9 +503,10 @@ The entire group structure is then passed to the neural network, where the archi
   \caption{TODO: caption}
   \label{fig-nn-architecture}
 \end{figure}
+\\
 Applying EAGGA to NNs requires defining a special architecture to realise interaction and monotonicity constraints.
 The neural network consists of a group of fully-connected sub-networks that are not connected amongst each other, as visualised in Figure \ref{fig-nn-architecture}.
-Each equivalence class in the group structure has its own sub-network, so that it is guaranteed that only these features can interact with each other.
+Each equivalence class in the group structure has its own sub-network, so that it is guaranteed that only the features within that group can interact with each other.
 \\
 For the hidden layers, we use ReLU activations with dropout afterwards, after which a shared output layer transforms the concatenated output of the sub-networks
 to a probability using the Sigmoid activation function.
@@ -515,7 +517,7 @@ Feature sparsity is achieved by only training on the included features that are 
 \\
 Grouping the network into sub-networks enables restricting feature interactions to only those features included in the respective group.
 The $\max$-operation in the ReLU induces a certain interaction effect on its inputs. It is important to note that this is a different kind of interaction
-than the multiplicative one happening for instance in a linear model.
+than the multiplicative one happening, for instance, in a linear model.
 Given a layer's input $\boldsymbol{x}$ and without loss of generality omitting the bias, the ReLU activation is defined as follows
 \begin{equation}
   \text{ReLU}(\boldsymbol{x})=\max(0,\sum_{j=1}^p w_j x_j)
@@ -535,12 +537,12 @@ Consider the vector form computation of a pre-activation hidden neuron $\boldsym
   \boldsymbol{o}_{\text{in}}^{(l)}=\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}
   \label{eq-our-extension-monotonicity}
 \end{equation}
-where $\boldsymbol{o}_{\text{out}}^{(l)}$ denotes the value after applying ReLU, $\boldsymbol{W}\in\mathbb{R}^{p^{(l)} \times p^{(l-1)}}$ refers to
+where $\boldsymbol{o}_{\text{out}}^{(l)}$ denotes the value of layer $l$ after applying ReLU, $\boldsymbol{W}\in\mathbb{R}^{p^{(l)} \times p^{(l-1)}}$ refers to
 the weight matrix and $\boldsymbol{b}\in\mathbb{R}^{p^{(l)}}$ to the bias.
 A function $f$ is monotonically increasing if and only if $\forall x_1\le x_2$ it holds that $f(x_1)\le f(x_2)$ and thus
 $\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$ is clearly only monotonically increasing if and only if
-$\boldsymbol{W}\in\mathbb{R}_{0+}^{p^{(l-1)}\times p^{(l)}}$ where $\mathbb{R}_{0+}=[0,\infty)$.
-$\boldsymbol{o}_{\text{out}}^{(l)}=ReLU(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ Is therefore a monotonically increasing
+$\boldsymbol{W}\in\mathbb{R}_{0+}^{p^{(l)}\times p^{(l-1)}}$, where $\mathbb{R}_{0+}=[0,\infty)$.
+Therefore, $\boldsymbol{o}_{\text{out}}^{(l)}=\text{ReLU}(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ is a monotonically increasing
 function if and only if the weights are clipped as described. Bias clipping is not necessary as it is a constant additive term.
 
 \subsection{Experimental Setup}
@@ -550,36 +552,47 @@ function if and only if the weights are clipped as described. Bias clipping is n
   \caption{TODO: caption}
   \label{fig-dataset-split}
 \end{figure}
-  * evaluation, holdout, cv, early stopping
-    - evaluation via dominated hypervolume along AUC-ROC, NF, NI, NNM as defined in original paper
-      * NF simply rel. \# of included features
-      * NI = sum of all possible pairwise interactions in each group over all possible pairwise interactions among all features = $\frac{\sum_g^G {p_g \choose 2}}{{p \choose 2}}$
-      * NNM = rel. \# unconstrained features
-    - outer holdout split: 2/3 train, 1/3 test (as in paper)
-      * run EAGGA on holdout train split, i.e. train + select best $\mu=100$ individuals based on non-dom-sorting (ascending) + crowding distance (descending) as tie breaker
-    - inner CV split on outer train portion: 5-fold (as in paper)
-      * in each fold fit model on 80\% of CV-train portion, use remaining 20\% of CV-train for early stopping
-    - early stopping criterion
-      * for each fold, always train for min 200 epochs, keep track of model with lowest loss
-      * after that, use patience of 100: if current model's loss is > mean of last 100 epochs' losses -> stop early
-      * if no early stopping, train each fold for max 10 minutes
-      * then stop training, return model with lowest loss
-    -> refere Figure \ref{fig-dataset-split}
-    - then evaluate on last remaining from CV + keep best $\mu$ individuals + generate $\lambda=10$ offspring for new generation + repeat
-    - final evaluation of individuals of pareto set
-      * for each individual, train model on training set of hold-out for max \# of epochs taken during CV-training
-      * decided on max \# epochs instead of mean after looking at loss graphs in preliminary experiments, also refer Figure \ref{fig-es-losses}
-      * those show that there is no uptick in losses on the early stopping portion (disjunct from training portion) of the set, hence max is reasonable
-  * hardware: training on Sagemaker Notebook instance
-    - initial experiments on ml.g4dn.xlarge instance (2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/)
-      using cuda not much faster than on ml.t3.medium (2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/)
-    - thus decided for more economic + ressourcen-schonend t3.medium
-  * did not train on philippine and gina datasets (308, 970 features, respectively), as they ran out of memory when computing interaction detectors
-  * known bugs
-    - in rare cases (anecdotally once every ~5-10 datasets), gga\_mutate seems to be generating -1 as monotonicity attribute, despite np.random.randint(low=0, high=2, size=1)
-      * loop crashes at group\_structure creation, for these cases subtract previous runtime from 8hrs + load from last generation in output via load\_population
-      * so far only happened for madeline in after gen-8.json after 5hrs 45mins (at start of gen-9, which wasn't exported yet) -> loaded this and ran for another 2hrs 15mins
-  * only 18 datasets
+We evaluate our models just like \citet[pp. 543f]{EAGGA} by computing the dominated hypervolume along AUC, NF, NI, NNM with reference point $(0, 1, 1, 1)^T$.
+Internally, this is implemented as minimising $1-\text{AUC}$ and a reference point $(1, 1, 1, 1)^T$.
+For NF, we simply count the relative number of included features.
+NI sums the numbers of all possible pairwise interactions in each group $\sum_g^G {p_g \choose 2}$ and divides them by the number of all possible pairwise interactions
+on the entire dataset ${p \choose 2}$.
+NNM counts the relative number of features in unconstrained equivalence classes.
+\\
+Our dataset is split as visualised in Figure \ref{fig-dataset-split}.
+We apply an outer holdout train-test split with 1/3 of the dataset being held for final testing, the 2/3 are used for 5-fold cross-validated training of each individual,
+as described by \citet[p. 543]{EAGGA}.
+What is different for our implementation is that on each training portion of the CV split, we further apply a holdout split, where 80\% are used for model training and
+20\% are reserved for early stopping.
+\\
+We use a conservative early stopping stratetgy, where each fold is always trained for a minimum of 200 epochs, keeping track of the fold's model with the lowest loss.
+After 200 epochs, our criterion with a patience of 100 epochs is applied: now, if the current epoch's model loss is greater than the mean of the last 100 epochs'
+losses, training in this fold stops early and returns the model with the lowest loss over the entire fold's training period.
+If no early stopping is triggered, we train each fold for a maximum of 10 minutes and return the model with the lowest loss on the early stopping portion.
+\\
+The model is then evaluated on the remaining portion from the CV split and after each generation, we keep the best $\mu=100$ individuals and generate $\lambda=10$
+offspring for the next generation and repeat this for 8 hours.
+\\
+The final evaluation of the individuals from the cross-validated Pareto set is then conducted on the held 1/3 of the dataset. Each individual
+is trained on the 2/3 training portion for the maximum number of epochs the individual required in the cross-validated training.
+Oftentimes, for cross-validation with early stopping, the final model is only trained on the mean or median number of epochs from CV.
+We decided specifically on the maximum after examining the loss over epochs in preliminary experiments, as plotted in Figure \ref{fig-es-losses}
+for the final experimental setup. Those show that there is no uptick in losses on the early stopping portion indicating that training too long does not increase
+the validation error.
+\\
+We trained in Sagemaker Notebooks on AWS and did initial training runs on
+ml.g4dn.xlarge\footnote{2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/} instances with CUDA.
+There was, however, no noticeable speed-up in model training compared to the much more economical
+ml.t3.medium\footnote{2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/} instances, after which we decided to run the
+final experimental setup on those.
+\\
+In total, we run our models on the same datasets as \citet[p. 544]{EAGGA}, except for the 2 largest ones ``philippine'' and ``gina'' (308 and 970 features, respectively),
+as those ran out of memory when initializing the interaction effects.
+\\
+In rare cases (anecdotally once every ~10 datasets), we observed our monotonicity detector generating a group monotonicty attribute of -1, which crashed the computation.
+For these cases, we implemented a function to import a previous generation of individuals to be able to pick up from where the training crashed and not train anew.
+This happened once for the dataset ``madeline'' after generation 9 and training for 5 hours 45 minutes, and hence we imported the generation and ran it for the remaining
+2 hours 15 minutes.
 
 
 \section{Experimental Results and Discussion}
