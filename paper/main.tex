@@ -491,50 +491,59 @@ Both the models in the interaction and the monotonicity detector (FAST and an en
 the remaining 20\% to compute their scores.
 
 \subsection{Architectural Details}
-
-  * group structures + datasets
-    - group structures implemented as described in the paper with additional list encoding sign of monotonicity of the individual features as detected by the
-      monotonicity detector
-    - included features are passed to dataset, dataset outputs included features, multiplied by the features' individual monotonicity (-1 / 1), so that group monotonicity
-      can be encoded with only $\{0,1\}$, as proposed in paper
-    - entire group structure is passed to NN, where architecture is built accordingly
+We implement the group structures as described by \citet[p. 541]{EAGGA} with an additional list encoding whether the signs of individual features should
+be inverted (-1) or not (1), as detected by the monotonicity detector.
+The features included in the group structure are then passed to a custom pytorch Dataset implementation, which outputs only the included features, multiplied with their
+individual sign. This allows the groups' monotonicity constraints to be encoded with only $\{0,1\}$, as proposed by \citet[p. 543]{EAGGA}.
+The entire group structure is then passed to the neural network, where the architecture is built accordingly.
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{./architecture.png}  % scale figure, cf. https://tex.stackexchange.com/a/16584
   \caption{TODO: caption}
   \label{fig-nn-architecture}
 \end{figure}
-  * neural network
-    - "instead of XGB as in the original paper, we apply the method to NNs to examine whether this type of regularisation can achieve interpretability on NNs while
-      outperforming EAGGA on XGB (original paper), ..., this requires special architecture, etc. pp."
-    - NN
-      * comprises "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
-      * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation
-      * optimizer is AdamW with default params, loss is binary cross entropy loss (sigmoid thus implicit in the loss function for better numerical stability,
-        NN itself outputs "logits", which refers to pre-activation output in pytorch)
-    - feature sparsity thus achieved by only training on included feature groups -> goes somewhat against notion of deep learning where model is supposed to decide itself,
-      which feature to "use" / put importance on -> ELABORATE
-    - feature interaction achieved by grouping, max-operation in ReLU induces interaction effect (different kind of interaction than e.g. in LM with multiplication)
-      -> equation why the interacting features need to be grouped together when using ReLU, cf. photos
-      * given layer input $\boldsymbol{x}$ and w.l.o.g. omitting bias
-      * $\text{ReLU}(\boldsymbol{x})=\max(0,\sum_{j=1}^p w_p x_p)$
-      * interaction not of the form $x_j \cdot x_{j'}$ as used to from LMs but of a form where the sum $w_j x_j+w_{j'} x_{j'}$ decides whether $x_j,x_{j'}$
-        pass through the activation or not
-      * in other words: $\max(0,w_j x_j + w_{j'} x_{j'})\neq\max(0,w_j x_j)+\max(w_{j'} x_{j'})$ and thus there is an interaction
-    - monotonicty constraint achieved by clipping weights to [0, infty) after each epoch for restricted equivalence relations (monotonic decrease achieved
-      via dataset object multiplying features with their individual signs), bias clipping not necessary (constant additive term)
-      -> equation how monotonicity is enforced with this
-      * consider vector form computation of hidden neuron $\boldsymbol{o}_{\text{in}}^{(l)}\in\mathbb{R}^{p^{(l)}}$ of layer $l$
-        - $\boldsymbol{o}_{\text{in}}^{(l)}=\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$
-        - where $\boldsymbol{o}_{\text{in}}^{(l)}$ refers to pre-activation values, $\boldsymbol{o}_{\text{out}}^{(l)}$ to value after applying ReLU
-        - weight matrix $\boldsymbol{W}\in\mathbb{R}^{p^{(l)} \times p^{(l-1)}}$
-        - bias $\boldsymbol{b}\in\mathbb{R}^{p^{(l)}}$
-      * definition of monotonically increasing function $f$: for $x_1\le x_2$ it must hold that $f(x_1)\le f(x_2)$
-      * $\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$ clearly only monotonic if and only if $\boldsymbol{W}\in\mathbb{R}_{0+}{p^{(l-1)}\times p^{(l)}}$
-        - where $\mathbb{R}_{0+}=[0,\infty)$
-        - hence weight clipping necessary, bias clipping not because only constant additive term
-      * $\boldsymbol{o}_{\text{out}}^{(l)}=ReLU(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ monotonic
-  (experimental setup)
+Applying EAGGA to NNs requires defining a special architecture to realise interaction and monotonicity constraints.
+The neural network consists of a group of fully-connected sub-networks that are not connected amongst each other, as visualised in Figure \ref{fig-nn-architecture}.
+Each equivalence class in the group structure has its own sub-network, so that it is guaranteed that only these features can interact with each other.
+\\
+For the hidden layers, we use ReLU activations with dropout afterwards, after which a shared output layer transforms the concatenated output of the sub-networks
+to a probability using the Sigmoid activation function.
+We use AdamW with default parameters, optimizing a binary cross-entropy loss with Sigmoid implicit in the loss function for better numerical stability. The network
+itself thus outputs only a ``logit'', which is the pre-activation output in pytorch.
+\\
+Feature sparsity is achieved by only training on the included features that are passed to the network from the dataset.
+\\
+Grouping the network into sub-networks enables restricting feature interactions to only those features included in the respective group.
+The $\max$-operation in the ReLU induces a certain interaction effect on its inputs. It is important to note that this is a different kind of interaction
+than the multiplicative one happening for instance in a linear model.
+Given a layer's input $\boldsymbol{x}$ and without loss of generality omitting the bias, the ReLU activation is defined as follows
+\begin{equation}
+  \text{ReLU}(\boldsymbol{x})=\max(0,\sum_{j=1}^p w_j x_j)
+  \label{eq-our-extension-interaction-1}
+\end{equation}
+We see that the interaction is not of the form $x_j \cdot x_{j'}$ but rather of a form where the sum $w_j x_j+w_{j'} x_{j'}$ decides whether $x_j,x_{j'}$
+pass through the activation or not.
+In other words, the interaction is given by the fact that
+\begin{equation}
+  \max(0,w_j x_j + w_{j'} x_{j'})\neq\max(0,w_j x_j)+\max(w_{j'} x_{j'})
+  \label{eq-our-extension-interaction-2}
+\end{equation}
+Finally, monotonicty is achieved by clipping the respective sub-network's weights to $[0,\infty)$ after each epoch. Whether a feature's effect is
+increasing or decreasing depends on the individual feature's sign encoded in the custom dataset implementation.
+Consider the vector form computation of a pre-activation hidden neuron $\boldsymbol{o}_{\text{in}}^{(l)}\in\mathbb{R}^{p^{(l)}}$ of layer $l$
+\begin{equation}
+  \boldsymbol{o}_{\text{in}}^{(l)}=\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}
+  \label{eq-our-extension-monotonicity}
+\end{equation}
+where $\boldsymbol{o}_{\text{out}}^{(l)}$ denotes the value after applying ReLU, $\boldsymbol{W}\in\mathbb{R}^{p^{(l)} \times p^{(l-1)}}$ refers to
+the weight matrix and $\boldsymbol{b}\in\mathbb{R}^{p^{(l)}}$ to the bias.
+A function $f$ is monotonically increasing if and only if $\forall x_1\le x_2$ it holds that $f(x_1)\le f(x_2)$ and thus
+$\boldsymbol{W} \boldsymbol{o}_{\text{out}}^{(l-1)} + \boldsymbol{b}$ is clearly only monotonically increasing if and only if
+$\boldsymbol{W}\in\mathbb{R}_{0+}^{p^{(l-1)}\times p^{(l)}}$ where $\mathbb{R}_{0+}=[0,\infty)$.
+$\boldsymbol{o}_{\text{out}}^{(l)}=ReLU(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ Is therefore a monotonically increasing
+function if and only if the weights are clipped as described. Bias clipping is not necessary as it is a constant additive term.
+
+\subsection{Experimental Setup}
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{./dataset_split.png}
