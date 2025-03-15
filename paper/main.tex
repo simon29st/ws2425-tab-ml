@@ -57,37 +57,35 @@
 \maketitle
 
 \begin{abstract}%   <- trailing '%' for backward compatibility of .sty file
-%\blindtext
-- tabular data still difficult for NNs, where it's still outperformed by other ML model classes
-- research suggests NN performance benefits from heavy regularisation
-- using EAGGA, we regularise an NN and achieve both comparable performance as XGB on EAGGA as well as interpretability
-- for this, we propose a network architecture specifically suited for the EAGGA algorithm
+  Tabular data proves to be difficult for neural networks, where they are still outperformed by other model classes.
+  Following recent research, regularisation can improve their performance. Incorporating the EAGGA framework designed to
+  enforce explainability, we improve interpretability and achieve performance comparable to that of XGBoost on the
+  metrics AUC, number of features, number of pairwise interactions, and number of non-monotone feature effects.
+  For this, we propose a sparse, regularised network architecture specifically suited for EAGGA's constraints on
+  interaction and monotonicity.
 \end{abstract}
 
 \begin{keywords}
-  tabular data, multi-objective optimization, interpretability, deep learning
+  tabular data, multi-objective optimization, interpretability, neural networks
 \end{keywords}
 
+
 \section{Introduction}
-Tabular Data
-- most common type of data
-- still difficult for neural networks
-- \citep[p. 7499]{Borisov_2024}
-- recent research suggests that strong regularisation is beneficial to NN performance on tab data \citep[8]{NEURIPS2021_c902b497}
-
-- we know regularisation from linear models can come with improvements in interpretabiltiy
-  * e.g. LM-LASSO (L1) regularisation as feature selection -> reduces \# features used in model by setting some coeffs to 0 \citep[p. 267]{lasso}
-- other forms of regularisation improve performance
-  * e.g. LM-Ridge (L2) on multi-collinear data \citep[p. 55]{ridge}  % TODO: mention in "extension" section that L2 is implemented via weight decay
-  * e.g. NN dropout, reduces co-adaptation \citep[p. 1]{hinton2012improvingneuralnetworkspreventing}
-  * e.g. NN early stopping, reduces overfitting on training data \citep[p. 778f]{early_stopping}
-
-- we want to explore if we can use NN regularisation to tackle both interpretability and improved performance (i.e. ``comparable'' to XGBoost) on tab data
-- using EAGGA framework, which proved it can improve performance while keeping (already high) performance of XGBoost on tab data -> see if interpretabiltiy
-  improvements translate to NN + performance can also be on par
-
-
-%\blindmathpaper
+Regularisation has been extensively shown to improve performance from linear models to neural networks.
+One of the most popular types of regularisation, Ridge or L2-regularisation is still the preferred method for handling
+multicollinear data in linear models \citep[p. 55]{ridge}.
+Practicioners training neural networks regularly use regularisation methods such as dropout to reduce
+co-adaptation \citep[p. 1]{hinton2012improvingneuralnetworkspreventing} or early stopping to avoid overfitting on the training data \citep[p. 778f]{early_stopping}.
+\\
+Some regularisation can even increase interpretability, such as LASSO, or L1-regularisation for linear models, which reduces the number of
+features used to fit the model by setting some coefficients to 0 \citep[p. 267]{lasso}.
+\\
+Neural networks as a model class have achieved impressive performance on a multitude of problems, yet still struggle with the most common format --
+tabular data \citep[p. 7499]{Borisov_2024}.
+Recent research, however, suggest that strong regularisation is beneficial to a neural network's performance on tabular data \citep[8]{NEURIPS2021_c902b497}.
+\citet{EAGGA} propose a framework to increase the interpretability of XGBoost using regularisation.
+In this report, we explore if the same framework can be extended to neural networks to tackle both interpretability and achieve performance on tabular data
+that is on par with XGBoost.
 
 
 \section{Background and Related Works}
@@ -103,7 +101,7 @@ Explainability of a model's reasoning is in many ways desirable. \citet[pp. 3-4]
 amongst which are \textit{gaining trust}, e.g. when doctors rely on medical diagnosis predictions, avoiding \textit{subconcious biases} by
 making sure loan approvals are non-discriminatory, or \textit{regulatory} reasons, most notably the EU's ``Right to Explanation'' warranted by the
 GDPR \citep[p. 1]{review_NN_interpretability} or for approval of drugs discovered using machine learning models \citep[1B]{survey_NN_interpretability}.
-It can further prove helpful for explaining unexpected drops in model performance, which could arise from optimising a model with respect to loss and then judging its
+It can further prove helpful for explaining unexpected drops in model performance, which could arise from optimizing a model with respect to loss and then judging its
 performance on a different metric such as accuracy, a practice known as \textit{model debugging} \citep[1B]{survey_NN_interpretability} or for
 \textit{scientific understanding} in domains where only models can make sense of increasingly complex data anymore and learnt knowledge encoded in a model needs to be
 made accessible to humans to be used reliably \citep[p. 1]{review_NN_interpretability}.
@@ -193,7 +191,7 @@ It employs a multivariate normal distribution to generate offspring, for which t
 and the covariance matrix similarly is the weighted covariance of the previous generation.
 The weighing scheme for both is done in a way as to reproduce previously successful (i.e. selected) steps \citep[p. 8-11]{hansen2023cmaevolutionstrategytutorial}.
 
-Another popular EA approach is Differential Evolution. Its populaton is randomly initialised so the entire search space is covered.
+Another popular EA approach is Differential Evolution. Its populaton is randomly initialized so the entire search space is covered.
 In each generation $g$, for each $\boldsymbol\lambda_{i,g}$ with $i=1,...,n$ it creates ``mutant vectors''
 $\boldsymbol\nu_{i,g+1}=\boldsymbol\lambda_{r_1,g}+F\cdot(\boldsymbol\lambda_{r_2,g}-\boldsymbol\lambda_{r_3,g})$,
 where $r_1,r_2,r_3\in\{1,...,n\}$ are mutually different random indices that also different from $i$ and $F\in[0,2]$ is constant.
@@ -453,7 +451,7 @@ Each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups:
 \end{itemize}
 To generate new offspring, they use a regular evolutionary algorithm on the model hyperparameters $\boldsymbol\Lambda$ and a grouping genetic algorithm (GGA) on
 the group structure space $\mathcal{G}$, with adapted mutation and crossover operators.
-The authors further introduce a special initialisation of the group structures to increase the sample-efficiency of their algorithm compared to random initialisation.
+The authors further introduce a special initialization of the group structures to increase the sample-efficiency of their algorithm compared to random initialization.
 \citep[pp. 541-543]{EAGGA}
 
 
@@ -526,12 +524,12 @@ function if and only if the weights are clipped as described. Bias clipping is n
 
 
 \subsection{Overall Algorithm}
-Our NNs use the following hyperparameters initialised as described
+Our NNs use the following hyperparameters initialized as described
 \begin{itemize}
-  \item Total number of layers $\in\{3, ..., 10\}$, initialised from a truncated Geometric distribution with $\pi=0.5$.
+  \item Total number of layers $\in\{3, ..., 10\}$, initialized from a truncated Geometric distribution with $\pi=0.5$.
         This includes input and output layers, the number of hidden layers is thus $\in\{1, ..., 8\}$
-  \item Number of nodes per hidden layer $\in\{3, ..., 20\}$, initialisation from a truncated Geometric distribution with $\pi=0.5$
-  \item Dropout probability $\in[0, 1]$, initialised from a truncated Gamma distribution with shape 2 and scale 0.15
+  \item Number of nodes per hidden layer $\in\{3, ..., 20\}$, initialization from a truncated Geometric distribution with $\pi=0.5$
+  \item Dropout probability $\in[0, 1]$, initialized from a truncated Gamma distribution with shape 2 and scale 0.15
 \end{itemize}
 For the group structure initialization we also employ feature, interaction, and monotonicity detectors.
 \\
@@ -630,7 +628,8 @@ Unfortunately, due to time constraints, we were not able to compare the performa
 instead of XGBoost, although we hypothesise that, given unrestricted NNs' struggle on tabular data compared to XGBoost, the outperformance over the union would
 be even greater.
 \\
-Examining the Pareto sets returned from training, which are accessible on our GitHub repository at ~/code/export/*.csv, we can observe a clear trend in the
+Examining the Pareto sets returned from training, which are accessible on our GitHub repository\footnote{\url{https://github.com/simon29st/ws2425-tab-ml/}}
+at ~/code/export/*.csv, we can observe a clear trend in the
 Pareto sets' models' hyperparameters:
 \begin{itemize}
   \item the total number of layers is mostly 3 or 4, but goes as high as 7 for the Satellite (36) and diabetes (8) datasets
@@ -661,8 +660,8 @@ more a expensive computation from longer trainings.
 The AUC used in computing the dominated hypervolume over generations in Figure \ref{fig-val-dhvs} is the mean AUC over all folds on the validation set.
 All but 3 datasets, 2 of which were only trained for 1 generation, exhibit improvement of their dominated hypervolume over generations. The absolute as
 well as relative improvement, however, is almost negligible, suggesting there to be no large decrease in dominated hypervolume, would we have just evaluated
-the group structure initialised by the detectors.
-This was also the reason behind not running EAGGA on the philipine and gina datasets on randomly initialised detectors (as the detectors for those datasets
+the group structure initialized by the detectors.
+This was also the reason behind not running EAGGA on the philipine and gina datasets on randomly initialized detectors (as the detectors for those datasets
 ran out of memory due to the high feature cardinality), as the detectors prove vital for the initial performance. This finding is also in
 line with \citep[Fig. 4, p. 545]{EAGGA}.
 \\
@@ -678,7 +677,7 @@ In our case, however, this is not possible as easily due to weight clipping for 
 A potential scenario were an AUC less than 0.5 could happen is when AdamW has high momentum, leading to negative weights that are then clipped to the
 non-negative domain at the end of the epoch.
 We acknowledge that weight clipping is a very imperfect way of enforcing monotonicity, but currently seems to be the only way to implement this type of
-constrained optimisation in pytorch.
+constrained optimization in pytorch.
 
 % belongs in "general algorithm"
 %    - preliminary
