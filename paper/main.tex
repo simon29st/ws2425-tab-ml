@@ -405,6 +405,7 @@ where $\text{HYP}(\hat{\mathcal{P}})$ denotes the hypervolume induced by the Par
 
 %likely shouldn't be an entire section
 \section{EAGGA}
+\label{sec-eagga}
 EAGGA, as proposed by \citet{EAGGA}, is an NSGA-II inspired algorithm that optimizes performance along with three interpretability objectives.
 The three interpretability proxies are
 \begin{itemize}
@@ -669,7 +670,7 @@ Clearly, there are some artifacts causing drops along the y-axis in most plots. 
 by a third-party library: in preliminary experiments we observed slightly varying front ranks on a synthetic sample of 10 (AUC, NF, NI, NNM) vectors.
 Unfortunately, this behaviour was still present when switching to another library for front rank computation, and thus not fixable for us.
 From our anecdotal evidence, the variations in rankings in these preliminary experiments only concerned few samples that were assigned to alternating
-neighbouring fronts, which seemed reasonable not to be concerned over.  % ok formulation?
+neighbouring fronts, hence we considered it tolerable.
 \\
 Another observation from the logs during training is AUC occassionally being less than 0.5.
 In general, AUC can then simply be inverted, as the model can usually always simply predict the opposite.
@@ -692,22 +693,28 @@ constrained optimisation in pytorch.
 %      * similar reasoning for pairwise interactions
 
 \section{Conclusion and Future Outlook}
-(Conclusion)
-- tabular data still difficult discipline for neural networks
-- research suggests heavy regularisation to improve performance on tabular data
-- EAGGA proved to be successful in making XGBoost more interpretable while keeping performance on par with unregularised XGBoost
-- we extend EAGGA to neural networks to see if we can utilise the regularisation induced by it to make NNs both interpretable and performant on tabular data
-- as consequence propose new architecture allowing to model equivalence relations of EAGGA
-- ... conforming to \citet[chap. 2]{survey_NN_interpretability} taxonomy it fits as ..., ..., ... %TODO
-- found overall performance comparable to that of XGBoost fitted using EAGGA, which is a plus, but no outperformance
+% Conclusion
+The EAGGA framework has been shown to be able to preserve performance while increasing interpretabiltiy of XGBoost models on tabular data, which has long been 
+a challenging discipline for neural networks. Following recent research suggesting that regularisation can improve
+performance \citep[8]{NEURIPS2021_c902b497}, we extended EAGGA \citep{EAGGA} to neural networks, utilising its regularising properties to achieve similar
+performance of neural networks as performance achieved with XGBoost and simultaneously increase interpretability of this notoriously uninterpretable model class.
+As a consequence, we propose a new architecture allowing to model the equivalence relations of the EAGGA framework.
+We create a model whose interpretation is active, attributional, and global in the framework of \citet[chap. 2]{survey_NN_interpretability}, and find
+overall performance, as measured on the dominated hypervolume of (AUC, NF, NI, NNM) to be comparable to that of XGBoost fitted usign EAGGA.
 
 (Future Outlook)
-- MO BO on group structure space possible, perhaps via restricted BO?
+- due to high complexity of EAs, a MOBO implementation on augmented space (cf section \ref{sec-eagga}) would be very nice
+- theoretical idea: use surrogate model with prior computed based on feasible combinations of equivalence classes
+  * high value, 0 uncertainty around combinations that make no sense
+    - e.g. those with a feature in multiple groups
+    - e.g. those with two features in one group, one having monot incr, one monot decr
+  * high uncertainty around combinations that would make sense to encourage exploring these regions as with GPs
+  * this would likely prove to be computationally very expensive for higher numbers of features
+- as more practical alternative: unrestricted MO BO on extended search space, cf section \ref{sec-eagga}, then acquisiton function taking into
+  account the constraints, e.g. as presented by \citep{10.5555/3020751.3020778}, \citep{perrone2019constrainedbayesianoptimizationmaxvalue}
 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
-
-%\newpage  % we are not to add page breaks
 
 
 \vskip 0.2in
