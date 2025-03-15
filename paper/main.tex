@@ -458,38 +458,12 @@ dominated hypervolume and achieved comparable or better performance than ParEGO 
 extended search space $\check{\boldsymbol\Lambda}$ \citep[pp. 543-545]{EAGGA}.
 Our work extends EAGGA to neural networks. We chose this model class for several reasons:
 \begin{enumerate}[label*=\arabic*.]
-  \item NNs are notoriously uninterpretable due to complex transformations of the feature spaces
+  \item NNs are notoriously uninterpretable due to complex transformations of the feature space
   \item Non-linear activation functions implicitly model interactions without direct control of which features interact with each other
-  \item There are no monotonicty guarantees
+  \item There are no monotonicty guarantees in neural networks
 \end{enumerate}
-
-\subsection{Overall Algorithm}
-We implement EAGGA largely as described by \citet{EAGGA} with only minor changes due to no straightforward transferability either due to different implementations
-of some classes and functions in R compared to Python or differences in model properties between XGBoost and neural nets.\\
-% TODO: after architectural details:
-Our NNs use the following hyperparameters initialised as described
-\begin{itemize}
-  \item Total number of layers $\in\{3, ..., 10\}$, initialised from a truncated Geometric distribution with $\pi=0.5$.
-        This includes input and output layers, the number of hidden layers is thus $\in\{1, ..., 8\}$.
-  \item Number of nodes per hidden layer $\in\{3, ..., 20\}$, initialisation from a truncated Geometric distribution with $\pi=0.5$.
-  \item Dropout probability $\in[0, 1]$, initialised from a truncated Gamma distribution with shape 2 and scale 0.15.
-\end{itemize}
-For the group structure initialization we also employ a feature, interaction, and monotonicity detector.
-\\
-The feature detector is as described by \citet[p. 542]{EAGGA}, but instead of fitting ten trees and using the relative number of features used as
-probability for the truncated Geometric distribution, we use a constant value of 0.5, as the sklearn DecisionTree examination is not straightforward.
-Further, in preliminary experiments we found the sampled number of features to occassionally be larger than the number of non-zero values in the
-normalised information gain filter. This can happen if the former is equal to the total number of features and one or more features are independent form the
-target. In these edge cases we use all features with non-zero filter-values instead.
-\\
-The interaction detector similarly uses a constant probability of 0.5 to sample the number of interactions to be used instead of the relative number of interactions
-from ten decision trees, for the same reasoning as for the feature detector. Also, for the FAST algorithm computing the interaction scores we don't use the residual
-sum of squares but the mean accuracy, as the datasets all have binary targets and FAST thus fits a logistic instead of a linear regression.
-\\
-The monotonicty detector is implemented as described by \citet[p. 543]{EAGGA}, using the default decision tree hyperparameters from mlr3 in Python.
-\\
-Both the models in the interaction and the monotonicity detector (FAST and an ensemble of decision trees, respectively) use 80\% of the data for model estimation and
-the remaining 20\% to compute their scores.
+The optimizer is implemented largely as described by \citet{EAGGA} with only minor changes due to there being no straightforward transferability of some functions
+from R to Python or differences in model properties between XGBoost and neural nets.\\
 
 \subsection{Architectural Details}
 We implement the group structures as described by \citet[p. 541]{EAGGA} with an additional list encoding whether the signs of individual features should
@@ -515,9 +489,9 @@ itself thus outputs only a ``logit'', which is the pre-activation output in pyto
 \\
 Feature sparsity is achieved by only training on the included features that are passed to the network from the dataset.
 \\
-Grouping the network into sub-networks enables restricting feature interactions to only those features included in the respective group.
+Grouping the network into sub-networks enables restricting feature interactions to only those features that are included in the respective group.
 The $\max$-operation in the ReLU induces a certain interaction effect on its inputs. It is important to note that this is a different kind of interaction
-than the multiplicative one happening, for instance, in a linear model.
+than the multiplicative one known, for instance, from the linear model.
 Given a layer's input $\boldsymbol{x}$ and without loss of generality omitting the bias, the ReLU activation is defined as follows
 \begin{equation}
   \text{ReLU}(\boldsymbol{x})=\max(0,\sum_{j=1}^p w_j x_j)
@@ -545,6 +519,33 @@ $\boldsymbol{W}\in\mathbb{R}_{0+}^{p^{(l)}\times p^{(l-1)}}$, where $\mathbb{R}_
 Therefore, $\boldsymbol{o}_{\text{out}}^{(l)}=\text{ReLU}(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ is a monotonically increasing
 function if and only if the weights are clipped as described. Bias clipping is not necessary as it is a constant additive term.
 
+
+\subsection{Overall Algorithm}
+Our NNs use the following hyperparameters initialised as described
+\begin{itemize}
+  \item Total number of layers $\in\{3, ..., 10\}$, initialised from a truncated Geometric distribution with $\pi=0.5$.
+        This includes input and output layers, the number of hidden layers is thus $\in\{1, ..., 8\}$
+  \item Number of nodes per hidden layer $\in\{3, ..., 20\}$, initialisation from a truncated Geometric distribution with $\pi=0.5$
+  \item Dropout probability $\in[0, 1]$, initialised from a truncated Gamma distribution with shape 2 and scale 0.15
+\end{itemize}
+For the group structure initialization we also employ feature, interaction, and monotonicity detectors.
+\\
+The feature detector is as described by \citet[p. 542]{EAGGA}, but instead of fitting ten trees and using the relative number of features as
+probability for the truncated Geometric distribution, we use a constant value of 0.5, as the sklearn DecisionTree examination is not straightforward.
+Further, in preliminary experiments we found the sampled number of features to occassionally be larger than the number of non-zero values in the
+normalised information gain filter. This can happen if the former is equal to the total number of features and one or more features are independent form the
+target. In these edge cases we use all features with non-zero filter-values instead.
+\\
+The interaction detector similarly uses a constant probability of 0.5 to sample the number of interactions to be used instead of the relative number of interactions
+from ten decision trees, for the same reasoning as for the feature detector. Also, for the FAST algorithm, when computing the interaction scores we don't
+use the residual sum of squares but the mean accuracy, as the datasets all have binary targets and FAST thus fits a logistic instead of a linear regression.
+\\
+The monotonicty detector is implemented as described by \citet[p. 543]{EAGGA}, using the default decision tree hyperparameters from mlr3 in Python.
+\\
+Both the models in the interaction and the monotonicity detector (FAST and an ensemble of decision trees, respectively) use 80\% of the data for model estimation and
+the remaining 20\% to compute their scores.
+
+
 \subsection{Experimental Setup}
 \begin{figure}
   \centering
@@ -555,7 +556,7 @@ function if and only if the weights are clipped as described. Bias clipping is n
 We evaluate our models just like \citet[pp. 543f]{EAGGA} by computing the dominated hypervolume along AUC, NF, NI, NNM with reference point $(0, 1, 1, 1)^T$.
 Internally, this is implemented as minimising $1-\text{AUC}$ and a reference point $(1, 1, 1, 1)^T$.
 For NF, we simply count the relative number of included features.
-NI sums the numbers of all possible pairwise interactions in each group $\sum_g^G {p_g \choose 2}$ and divides them by the number of all possible pairwise interactions
+NI sums the numbers of all possible pairwise interactions in each group ${p_k \choose 2}$ and divides them by the number of all possible pairwise interactions
 on the entire dataset ${p \choose 2}$.
 NNM counts the relative number of features in unconstrained equivalence classes.
 \\
