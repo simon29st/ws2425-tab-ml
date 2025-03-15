@@ -341,45 +341,57 @@ Again, solutions are very dependent on the user-defined priorisation.
 
 \subsubsection{A-posteriori}
 \label{sec-moo-post}
-- problem a priori
-  * either restrict search space to ``enforce our will'' (e.g. only use 50\% of features), optimise only prediction performance + use this
-  * or leave search space unrestricted but adjust loss function to incorporate multiple objectives + take optimum from there
-  * in either case: no knowledge of interplay between HP config + performance on all objectives
-  * in practical applications, it is oftentimes useful to make the decision of which point of the Pareto set to use a-posteriori, e.g. if only a slight decrease in
-    one objective translates to a significant improvement in another that would have been missed if the problem was optimised using a-priori methods
-  * a-posteriori evaluates configs just as a-priori, but keeps track of multiple ``best'' (non-dominated) solutions -> makes relationship between HP config + objectives visible
-- aside from usual baselines grid and random seach there are multi-objective BO adaptations, mainly using either of two approaches
-  (1) fit single surrogate model on scalarised objectives, e.g. ParEGO, which employs the augemented Tchebycheff function as scalarisation to ensure the Pareto front is
-      explored sufficiently \citep[pp. 15f]{10.1145/3610536} + \citep[pp. 54-56]{ParEGO}
-  (2) fit one surrogate per objective, then
-    - either one acquisition function per objective -> return set of promising next candidates
-    - or one overall acquisition function aggregating surrogates, e.g. \textit{EHI}, maximises expected improvement of hypervolume \citep[p. 16]{10.1145/3610536} + \citep[pp. 8f]{EHI}
-- lastly, there is also multi-objective EA (MOEA) algorithms to explore Pareto front, one of which is NSGA-II (Nondominated Sorting Genetic Algorithm)
-  * improves upon predecessor NSGA \citep{NSGA} by making it parameterless, ensuring elitism, and reducing computational complexity of ranking of individuals \citep[p. 182]{NSGA_II}
-  * uses all the regular operators, i.e. reproduction, mutation, crossover can be used from single-objective EA (SOEA)
-  * difference to SOEA: ranking of individuals (SOEA uses scalar fitness, MOEA mutliple objectives)
-    - multi-objective ranking mechanism based on 2 parts
-      * non-dominated sorting, ensures elitism
-        - iterative procedure to rank individuals in population by their fronts
-        (1) determine pareto front, assign rank 0
-        (2) remove pareto front from population
-        (3) if any individuals left, repeat from 1, increment rank \#
-        - \citep[p. 201]{genetic_algos} + \citep[pp. 183f]{NSGA_II}
-      * crowding distance, ensures sufficient diversity, i.e. exploration of pareto front
-        - assigns score depending on how crowded area around individual in objective space is
-        - crowding distance of an individual = mean side length of cuboid spanned by its nearest neighbours as vertices in objective space
-        - individuals without two neighbours in a dimension are assigned infinitely high distance value
-        - \citep[p. 185]{NSGA_II}
-        -> the less the crowding distance, the more ``crowded'' an area is by other individuals
-      -> rank individuals by nds front rank (ascending) + crowding distance (descending) as tie breaker
-  * ranking used for selecting $\mu$ best individuals to keep for next generation + for reproduction: via binary tournament selection: select two random individuals,
-    pick best w.r.t. nds + cd for offspring creation (i.e. mutation / crossover)
-  * using nds for ranking / fitness makes intuitive sense, but why cd?
-    - goal of MOO: not simply optimise HV, but approx true Pareto front well
-    - only having individuals representing one area in objective space makes Pareto front estimate very ``unstable'': removing this area (i.e. solutions form that area)
-      would ``collapse'' entire front
-    - instead having multiple areas be represented makes the estimate ``stable'': removing one area wouldn't impact Pareto front estimate a lot
-    - \citep[p. 185, pp. 189-192]{genetic_algos}
+The disadvantage of a-priori methods is the missing knowledge of the interplay between a hyperparameter configuration and the trained model's
+performance across objectives:
+we can either restrict the search space to enforce some will, such as only using a maximum of 50\% of features, optimize for performance and use the
+resulting model, or leave the search space unrestricted, adjust the loss function to incorporate all objectives and take its optimum.
+In neither case do we know the impact our a-priori trade-off has on the final performance.
+In practical applications, the impact on performance across all objectives is what matters.
+This is the main advantage of a-posteriori methods: instead of implicitly defining a trade-off prior to training, we still evaluate multiple HP configurations
+but keep the set of non-dominated solutions instead of just one that satisfies the trade-off criterion.
+This is beneficial as it makes the relationship visible, a practicioner can now see, for instance, that a slight decrease in one objective might translate to
+a significant improvement in another that would have been missed if the problem was optimized with a-priori methods.
+\\
+Aside from the usual baselines grid and random search there are multi-objetive Bayesian Optimization adaptations, mainly using one of two approaches:
+\begin{enumerate}
+  \item Fitting a single surrogate model on scalarized objectives. \citet[pp. 54-56]{ParEGO} propose \textit{ParEGO}, which employs the augemented Tchebycheff function as
+        scalarization to ensure the Pareto front is explored sufficiently.
+  \item Fitting one surrogate per objective, then either using one acquisition function per surrogate to return a set of promising candidate query points, or using
+        one overall acquisition function to aggregate the surrogates, such as \textit{EHI} as proposed by \citet[pp. 8f]{EHI}, which maximises the expected improvement
+        of hypervolume.
+\end{enumerate}
+
+Lastly, there is also a multitude of multi-objective evolutionary algorithms (MOEA) to explore the Pareto front.
+A key challenge for MOEAs is determining the fitness of an individual, as there are now multiple objectives that need to be incorporated instead of
+one as in single-objective EA (SOEA).
+We will outline the popular NSGA-II (Nondominated Sorting Genetic Algorithm II), which improves upon its predecessor NSGA \citep{NSGA} by making it
+parameterless, ensuring elitism, and reducing the computational complexity of ranking of individuals \citep[p. 182]{NSGA_II}.
+NSGA-II uses all the regular operators reproduction, mutation, and crossover that are already known from SOEA.
+The difference is in the fitness function, which for NSGA-II comprises two parts: non-dominated sorting and crowding distance.
+\\
+\textit{Non-dominated sorting}, as described by \citet[p. 201]{genetic_algos} and \citet[pp. 183f]{NSGA_II} is an iterative procedure to ensure
+elitist selection through ranking individuals by their fronts.
+First, it assigns all individuals of the Pareto front a rank of 0. It then temporarily removes these individuals from the population and repeats
+this procedure with an incremented rank number until no individuals are left.
+\\
+The second part, \textit{crowding distance} ensures sufficient diversity, i.e. exploration of the Pareto front.
+The algorithm assigns each individual a score depending on how ``crowded'' the area in objective space around it is. Crowding distance is computed
+as the mean side length of the cuboid spanned by its nearest neighbours as vertices in the objective space, where individuals without two neighbours
+along some dimension are assigned an infinitely high distance value. The less the crowding distance, the more an area is by other individuals. \citep[p. 185]{NSGA_II}
+\\
+NSGA-II then ranks individuals by their non-dominated sorting front ranks in ascending order and by their crowding distance in descending order as tie breaker.
+This ranking is then used for selecting the $\mu$ best individuals to keep for the next generation.
+Reproduction follows a binary tournament selection, where two individuals are randomly drawn from the population and the better one according to the ranking gets
+included in the reproduction pool for mutation and crossover.
+\\
+Conceptually, the reasoning behind using non-dominated sorting to rank individuals is intuitive: the closer an individuals front is to the Pareto front, i.e.
+the smaller its front rank, the better it approaches the true Pareto front.
+The usage of crowding distance, on the other hand, is not as straightforward. To understand it, we recall the goal of MOO, which is not merely optimizing
+hypervolume, but to approximate the true Pareto front well.
+Considering the scenario of only having individuals of one area in the objective space included in the Pareto front estimate makes it very unstable: removing this
+area (i.e. the solutions from this area) would collapse the entire front estimate.
+Considering now the opposite, having multiple areas making up the Pareto front estimate, makes it stable: removing one area would not impact the estimate a lot,
+as it's still held up by other individuals. \citep[p. 185, pp. 189-192]{genetic_algos}
 
 
 %likely shouldn't be an entire section
@@ -484,6 +496,7 @@ Again, solutions are very dependent on the user-defined priorisation.
         - where $\mathbb{R}_{0+}=[0,\infty)$
         - hence weight clipping necessary, bias clipping not because only constant additive term
       * $\boldsymbol{o}_{\text{out}}^{(l)}=ReLU(\boldsymbol{o}_{\text{in}}^{(l)})=\max(0,\boldsymbol{o}_{\text{in}}^{(l)})$ monotonic
+  (experimental setup)
 \begin{figure}
   \centering
   \includegraphics[width=\linewidth]{./dataset_split.png}
@@ -519,6 +532,7 @@ Again, solutions are very dependent on the user-defined priorisation.
     - in rare cases (anecdotally once every ~5-10 datasets), gga\_mutate seems to be generating -1 as monotonicity attribute, despite np.random.randint(low=0, high=2, size=1)
       * loop crashes at group\_structure creation, for these cases subtract previous runtime from 8hrs + load from last generation in output via load\_population
       * so far only happened for madeline in after gen-8.json after 5hrs 45mins (at start of gen-9, which wasn't exported yet) -> loaded this and ran for another 2hrs 15mins
+  * only 18 datasets
 
 
 \section{Experimental Results and Discussion}
