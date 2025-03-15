@@ -196,8 +196,6 @@
   author={Nikolaus Hansen},
   year={2023},
   eprint={1604.00772},
-  archivePrefix={arXiv},
-  primaryClass={cs.LG},
   doi={10.48550/arXiv.1604.00772}
 }
 
@@ -387,6 +385,56 @@
   keywords={Genetic algorithms;Sorting;Computational complexity;Evolutionary computation;Computational modeling;Testing;Decision making;Associate members;Diversity reception;Constraint optimization},
   doi={10.1109/4235.996017}
 }
+
+
+% https://arxiv.org/abs/1611.02167
+@misc{baker2017designingneuralnetworkarchitectures,
+  title={Designing Neural Network Architectures using Reinforcement Learning}, 
+  author={Bowen Baker and Otkrist Gupta and Nikhil Naik and Ramesh Raskar},
+  year={2017},
+  eprint={1611.02167},
+  archivePrefix={arXiv},
+  primaryClass={cs.LG},
+  doi={10.48550/arXiv.1611.02167}, 
+}
+
+
+% https://dl.acm.org/doi/abs/10.5555/3504035.3504375
+% https://ojs.aaai.org/index.php/AAAI/article/view/11709
+@inproceedings{10.5555/3504035.3504375,
+  author = {Cai, Han and Chen, Tianyao and Zhang, Weinan and Yu, Yong and Wang, Jun},
+  title = {Efficient architecture search by network transformation},
+  year = {2018},
+  isbn = {978-1-57735-800-8},
+  publisher = {AAAI Press},
+  abstract = {Techniques for automatically designing deep neural network architectures such as reinforcement learning based approaches have recently shown promising results. However, their success is based on vast computational resources (e.g. hundreds of GPUs), making them difficult to be widely used. A noticeable limitation is that they still design and train each network from scratch during the exploration of the architecture space, which is highly inefficient. In this paper, we propose a new framework toward efficient architecture search by exploring the architecture space based on the current network and reusing its weights. We employ a reinforcement learning agent as the meta-controller, whose action is to grow the network depth or layer width with function-preserving transformations. As such, the previously validated networks can be reused for further exploration, thus saves a large amount of computational cost. We apply our method to explore the architecture space of the plain convolutional neural networks (no skip-connections, branching etc.) on image benchmark datasets (CIFAR-10, SVHN) with restricted computational resources (5 GPUs). Our method can design highly competitive networks that outperform existing networks using the same design scheme. On CIFAR-10, our model without skip-connections achieves 4.23\% test error rate, exceeding a vast majority of modern architectures and approaching DenseNet. Furthermore, by applying our method to explore the DenseNet architecture space, we are able to achieve more accurate networks with fewer parameters.},
+  booktitle = {Proceedings of the Thirty-Second AAAI Conference on Artificial Intelligence and Thirtieth Innovative Applications of Artificial Intelligence Conference and Eighth AAAI Symposium on Educational Advances in Artificial Intelligence},
+  articleno = {340},
+  numpages = {8},
+  location = {New Orleans, Louisiana, USA},
+  series = {AAAI'18/IAAI'18/EAAI'18},
+  doi = {10.1609/aaai.v32i1.11709}
+}
+
+
+% https://doi.org/10.1145/3071178.3071229
+@inproceedings{10.1145/3071178.3071229,
+  author = {Suganuma, Masanori and Shirakawa, Shinichi and Nagao, Tomoharu},
+  title = {A genetic programming approach to designing convolutional neural network architectures},
+  year = {2017},
+  isbn = {9781450349208},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  doi = {10.1145/3071178.3071229},
+  abstract = {The convolutional neural network (CNN), which is one of the deep learning models, has seen much success in a variety of computer vision tasks. However, designing CNN architectures still requires expert knowledge and a lot of trial and error. In this paper, we attempt to automatically construct CNN architectures for an image classification task based on Cartesian genetic programming (CGP). In our method, we adopt highly functional modules, such as convolutional blocks and tensor concatenation, as the node functions in CGP. The CNN structure and connectivity represented by the CGP encoding method are optimized to maximize the validation accuracy. To evaluate the proposed method, we constructed a CNN architecture for the image classification task with the CIFAR-10 dataset. The experimental result shows that the proposed method can be used to automatically find the competitive CNN architecture compared with state-of-the-art models.},
+  booktitle = {Proceedings of the Genetic and Evolutionary Computation Conference},
+  pages = {497–504},
+  numpages = {8},
+  keywords = {convolutional neural network, deep learning, designing neural network architectures, genetic programming},
+  location = {Berlin, Germany},
+  series = {GECCO '17},
+}
+
 
 
 % [3 Experimental Results and Discussion]
