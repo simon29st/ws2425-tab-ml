@@ -29,6 +29,8 @@
 \DeclareMathOperator*{\argmin}{arg\,min}
 \usepackage{bm}
 
+\usepackage{enumitem}  % nested enumerations, cf. https://tex.stackexchange.com/a/126756
+
 % Definitions of handy macros can go here
 
 \newcommand{\dataset}{{\cal D}}
@@ -353,12 +355,15 @@ This is beneficial as it makes the relationship visible, a practicioner can now 
 a significant improvement in another that would have been missed if the problem was optimized with a-priori methods.
 \\
 Aside from the usual baselines grid and random search there are multi-objetive Bayesian Optimization adaptations, mainly using one of two approaches:
-\begin{enumerate}
+\begin{enumerate}[label*=\arabic*.]
   \item Fitting a single surrogate model on scalarized objectives. \citet[pp. 54-56]{ParEGO} propose \textit{ParEGO}, which employs the augemented Tchebycheff function as
         scalarization to ensure the Pareto front is explored sufficiently.
-  \item Fitting one surrogate per objective, then either using one acquisition function per surrogate to return a set of promising candidate query points, or using
-        one overall acquisition function to aggregate the surrogates, such as \textit{EHI} as proposed by \citet[pp. 8f]{EHI}, which maximises the expected improvement
-        of hypervolume.
+  \item Fitting one surrogate per objective, then either 
+  \begin{enumerate}[label*=\arabic*.]
+    \item using one acquisition function per surrogate to return a set of promising candidate query points or
+    \item using one overall acquisition function to aggregate the surrogates, such as \textit{EHI} as proposed by \citet[pp. 8f]{EHI}, which maximises
+          the expected improvement of hypervolume.
+  \end{enumerate}
 \end{enumerate}
 
 Lastly, there is also a multitude of multi-objective evolutionary algorithms (MOEA) to explore the Pareto front.
@@ -396,33 +401,55 @@ as it's still held up by other individuals. \citep[p. 185, pp. 189-192]{genetic_
 
 %likely shouldn't be an entire section
 \section{EAGGA}
-- NSGA-II inspired evolutionary + genetic algorithm
-- uses AUC-ROC as performance metric and 3 interpretation metrics
-  * NF: rel. \# of features used in model
-  * NI: rel. \# of pairwise feature interaction effects
-  * NNM: rel. \# of non-monotone feature effects
-- aims to find high performing models (AUC) with low NF, NI, and NNM -> ensures better interpretability than simply optimising for performance
-  but creates very large objective space $\check{\boldsymbol\Lambda}$ to be optimised over with
-  tuples $(\boldsymbol\lambda, \boldsymbol{s}, \boldsymbol{I}_s, \boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}})=\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}$
-  with
-  * $\boldsymbol\lambda\in\boldsymbol\Lambda$ ``regular'' model HP config
-  * $\boldsymbol{s}\in\{0,1\}^p$ vector denoting feature usage
-  * $\boldsymbol{I}_s\in\{0,1\}^{p\times p}$ matrix denoting pairwise interactions
-  * $\boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}}\in\{-1,0,1\}^p$ vector denoting monotonicity constraint of each feature (-1 decreasing, 0 none, 1 increasing)
-- thus would require to solve $\argmin_{\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}} (GE(\mathcal{I}_{\check{\boldsymbol\lambda}},\mathcal{D}),NF(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}}),NI(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}}),NNM(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}}))$
-- \citep[pp. 540f]{EAGGA}
-- introduces equivalence relation $R$ ``allowed to interact'' on features that significantly reduces search space for more efficient optimization
-- thus: augmented search space $\tilde{\boldsymbol\Lambda}=\boldsymbol\Lambda\times\mathcal{G}$ comprising model HP space and group structure space
-  * each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups:
-    - $G_1$ set of excluded features
-    - $\forall k=2,...,g:G_k=(E_k,M_{E_k})$ tuple
-      * $E_k$ set of features allowed to interact with each other
-      * $M_{E_k}$ monotonicity constraint of entire group $k$
-- EA on model hyperparameters $\boldsymbol\Lambda$
-- GGA on group structure space $\mathcal{G}$ with adapted mutation and crossover operators
-- \citep[pp. 541f]{EAGGA}
-- futher introduces special initialisation of group structures to increase sample-efficiency of EAGGA algorithm compared to random init
-- \citep[pp. 542f]{EAGGA}
+EAGGA, as proposed by \citet{EAGGA}, is an NSGA-II inspired algorithm that optimizes performance along with three interpretability objectives.
+The three interpretability proxies are
+\begin{itemize}
+  \item NF: the relative number of features used in the model
+  \item NI: the relative number of pairwise interaction effects in the model
+  \item NNM: the relative number of non-monotone feature effects in the model
+\end{itemize}
+The authors argue that a sparse model as indicated by a low NF score helps interpretability by reducing the number of e.g. ALE plots necessary in post-hoc
+analysis \citep[p. 540]{EAGGA}. Similarly, a low NI score reduces the interplay between features and thus the dimensionality of post-hoc analysis plots
+and a low NNM avoids complex non-monotone feature effects, which is often desirable in practical use-cases such as loan approval, where a higher income should
+translate to a higher chance of approval.
+Lastly, performance is measured by the area under the receiver operating characteristic curve (AUC), which trades-off the true against the false positives rate.
+\\
+\citet[pp. 540f]{EAGGA} acknowledge that this set-up creates the large objective space $\check{\boldsymbol\Lambda}$ to be optimized over, containing
+tuples $(\boldsymbol\lambda, \boldsymbol{s}, \boldsymbol{I}_s, \boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}})=\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}$
+with
+\begin{itemize}
+  \item $\boldsymbol\lambda\in\boldsymbol\Lambda$ being the model's hyperparameter configuration
+  \item $\boldsymbol{s}\in\{0,1\}^p$ being a binary vector denoting which features are used in the model
+  \item $\boldsymbol{I}_s\in\{0,1\}^{p\times p}$ being a binary matrix denoting included pairwise interactions between features
+  \item $\boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}}\in\{-1,0,1\}^p$ being the vector denoting the monotonicity constraint of a feature (-1 decreasing, 0 none, 1 increasing)
+\end{itemize}
+Consequently, the optimization problem over this space would be
+\begin{equation}
+  \argmin_{\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}} \big(
+    GE(\mathcal{I}_{\check{\boldsymbol\lambda}},\mathcal{D}),
+    NF(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}}),
+    NI(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}}),
+    NNM(\hat{f}_{\mathcal{D},\check{\boldsymbol\lambda}})
+  \big)
+  \label{eq-eagga-extended-space}
+\end{equation}
+The authors thus introduce the equivalence relation $R$ ``allowed to interact'' on the set of features $C$. They further denote all features included in the model with $C_s$.
+This induces a group structure of equivalence classes, where features allowed to interact belong to the same class and share the same monotonicity attribute.
+Using this group structure, they define a much simpler augmented serach space $\tilde{\boldsymbol\Lambda}=\boldsymbol\Lambda\times\mathcal{G}$ comprising of
+the cartesian product of the model hyperparameter space $\boldsymbol\Lambda$ and the group structure space $\mathcal{G}$.
+Each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups:
+\begin{itemize}
+  \item $G_1=C\setminus C_s$ being the set of excluded features
+  \item $G_k=(E_k,M_{E_k}), \forall k=2,...,g$ being tuples with
+  \begin{itemize}
+    \item $E_k\subseteq C_s$ being the set of features in group $k$, i.e. features allowed to interact with each other
+    \item $M_{E_k}$ being the monotonicity constraint of group $k$
+  \end{itemize}
+\end{itemize}
+To generate new offspring, they use a regular evolutionary algorithm on the model hyperparameters $\boldsymbol\Lambda$ and a grouping genetic algorithm (GGA) on
+the group structure space $\mathcal{G}$, with adapted mutation and crossover operators.
+The authors further introduce a special initialisation of the group structures to increase the sample-efficiency of their algorithm compared to random initialisation.
+\citep[pp. 541-543]{EAGGA}
 
 
 \section{Extension to neural networks}
