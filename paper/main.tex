@@ -414,7 +414,7 @@ and a low NNM avoids complex non-monotone feature effects, which is often desira
 translate to a higher chance of approval.
 Lastly, performance is measured by the area under the receiver operating characteristic curve (AUC), which trades-off the true against the false positives rate.
 \\
-\citet[pp. 540f]{EAGGA} acknowledge that this set-up creates the large objective space $\check{\boldsymbol\Lambda}$ to be optimized over, containing
+\citet[pp. 540f]{EAGGA} acknowledge that this set-up creates the complex ``extended search space'' $\check{\boldsymbol\Lambda}$ to be optimized over, containing
 tuples $(\boldsymbol\lambda, \boldsymbol{s}, \boldsymbol{I}_s, \boldsymbol{m}_{\boldsymbol{I}_{\boldsymbol{s}}})=\check{\boldsymbol\lambda}\in\check{\boldsymbol\Lambda}$
 with
 \begin{itemize}
@@ -435,7 +435,7 @@ Consequently, the optimization problem over this space would be
 \end{equation}
 The authors thus introduce the equivalence relation $R$ ``allowed to interact'' on the set of features $C$. They further denote all features included in the model with $C_s$.
 This induces a group structure of equivalence classes, where features allowed to interact belong to the same class and share the same monotonicity attribute.
-Using this group structure, they define a much simpler augmented serach space $\tilde{\boldsymbol\Lambda}=\boldsymbol\Lambda\times\mathcal{G}$ comprising of
+Using this group structure, they define a much simpler ``augmented serach space'' $\tilde{\boldsymbol\Lambda}=\boldsymbol\Lambda\times\mathcal{G}$ comprising of
 the cartesian product of the model hyperparameter space $\boldsymbol\Lambda$ and the group structure space $\mathcal{G}$.
 Each group structure $\boldsymbol{G}\in\mathcal{G}$ consists of $g$ groups:
 \begin{itemize}
@@ -452,35 +452,45 @@ The authors further introduce a special initialisation of the group structures t
 \citep[pp. 541-543]{EAGGA}
 
 
-\section{Extension to neural networks}
-- original EAGGA applied to XGBoost model proved to vastly outperform union of competitor models w.r.t. dominated hypervolume and comparable or better than ParEGO on
-  extended search space $\check{\boldsymbol\Lambda}$ \citep[pp. 543-545]{EAGGA}
-- why extend it to NNs?
-  * NNs notoriously uninterpretable due to complex transformation of the feature space
-  * due to (lin alg) non-linear activation functions, interactions can be modelled
-  * no monotonicity guarantees
-- our approach
-  (general algorithm)
-  * EAGGA algorithm implemented largely as described in the paper
-  * HP init
-    - NN total layers $\in\{3, ..., 10\}$, i.e. hidden layers $\in\{1, ..., 8\}$, init from trunc geom with prob=0.5
-    - NN nodes per hidden layer (for each group) $\in\{3, ..., 20\}$, init from trunc geom with prob=0.5
-    - NN dropout \% $\in[0, 1]$, init from trunc gamma with shape=2, scale=0.15
-  * group structure init
-    - feature detector
-      * as described in paper
-      * but instead of fitting 10 trees + taking rel. \# of features used as prob for trunc geom, we simply use 0.5 (sklearn dectree examination not straightforward)
-      * also in preliminary experiments we found the sampled \# of features to be used occassionally to be > \# of non-0 values in normalised information gain filter
-        (e.g. if former is = total \# of features and one feature is indep. from target) in these edge cases we simply use all features with non-0 filter values
-    - interaction detector
-      * as described in paper
-      * same as for feat detect: use prob=0.5 to sample \# of interactions used instead of 10 dec trees
-      * also for FAST algorithm don't use RSS (lin reg metric) but mean accuracy, as we fit log reg
-    - monotonicity detector
-      * as described in paper
-      * use default HPs (max depth 30, minsplit = 20) of mlr3 classification tree implementation, as this is the library the paper uses
-    -> both interaction + monotonicity detectors fit their models on 80\% of train split from holdout + eval on remaining 20\%
-  (implementation details)
+\section{Extension to Neural Networks}
+EAGGA as implemented by \citet{EAGGA} applies the optimizer to XGBoost, which proved to vastly outperform a union of competitor models with respect to
+dominated hypervolume and achieved comparable or better performance than ParEGO optimizing over the
+extended search space $\check{\boldsymbol\Lambda}$ \citep[pp. 543-545]{EAGGA}.
+Our work extends EAGGA to neural networks. We chose this model class for several reasons:
+\begin{enumerate}[label*=\arabic*.]
+  \item NNs are notoriously uninterpretable due to complex transformations of the feature spaces
+  \item Non-linear activation functions implicitly model interactions without direct control of which features interact with each other
+  \item There are no monotonicty guarantees
+\end{enumerate}
+
+\subsection{Overall Algorithm}
+We implement EAGGA largely as described by \citet{EAGGA} with only minor changes due to no straightforward transferability either due to different implementations
+of some classes and functions in R compared to Python or differences in model properties between XGBoost and neural nets.\\
+Our NNs use the following hyperparameters initialised as described
+\begin{itemize}
+  \item Total number of layers $\in\{3, ..., 10\}$, initialised from a truncated Geometric distribution with $\pi=0.5$.
+        This includes input and output layers, the number of hidden layers is thus $\in\{1, ..., 8\}$.
+  \item Number of nodes per hidden layer $\in\{3, ..., 20\}$, initialisation from a truncated Geometric distribution with $\pi=0.5$.
+  \item Dropout probability $\in[0, 1]$, initialised from a truncated Gamma distribution with shape 2 and scale 0.15.
+\end{itemize}
+For the group structure initialization we also employ a feature, interaction, and monotonicity detector.
+\\
+The feature detector is as described by \citet[p. 542]{EAGGA}, but instead of fitting ten trees and using the relative number of features used as
+probability for the truncated Geometric distribution, we use a constant value of 0.5, as the sklearn DecisionTree examination is not straightforward.
+Further, in preliminary experiments we found the sampled number of features to occassionally be larger than the number of non-zero values in the
+normalised information gain filter. This can happen if the former is equal to the total number of features and one or more features are independent form the
+target. In these edge cases we use all features with non-zero filter-values instead.
+\\
+The interaction detector similarly uses a constant probability of 0.5 to sample the number of interactions to be used instead of the relative number of interactions
+from ten decision trees, for the same reasoning as for the feature detector. Also, for the FAST algorithm computing the interaction scores we don't use the residual
+sum of squares but the mean accuracy, as the datasets all have binary targets and FAST thus fits a logistic instead of a linear regression.
+\\
+The monotonicty detector is implemented as described by \citet[p. 543]{EAGGA}, using the default decision tree hyperparameters from mlr3 in Python.
+\\
+Both the models in the interaction and the monotonicity detector (FAST and an ensemble of decision trees, respectively) use 80\% of the data for model estimation and
+the remaining 20\% to compute their scores.
+
+\subsection{Architectural Details}
   * group structures + datasets
     - group structures implemented as described in the paper with additional list encoding sign of monotonicity of the individual features as detected by the
       monotonicity detector
@@ -497,7 +507,7 @@ The authors further introduce a special initialisation of the group structures t
     - "instead of XGB as in the original paper, we apply the method to NNs to examine whether this type of regularisation can achieve interpretability on NNs while
       outperforming EAGGA on XGB (original paper), ..., this requires special architecture, etc. pp."
     - NN
-      * comprises of "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
+      * comprises "sub-NNs", one for each equivalence relation -> basically non-fully connected NN
       * hidden layers use ReLU activation and dropout afterwards, then a shared output layer with concatenated sub-NNs' outputs as input and sigmoid activation
       * optimizer is AdamW with default params, loss is binary cross entropy loss (sigmoid thus implicit in the loss function for better numerical stability,
         NN itself outputs "logits", which refers to pre-activation output in pytorch)
@@ -570,7 +580,7 @@ The authors further introduce a special initialisation of the group structures t
   \label{fig-test-dhvs}
 \end{figure}
 - preliminary
-  * our implementation of feature + interaction detectors likely tend to include
+  * our implementation of feature + interaction detectors likely tend to include  % belongs in "general algorithm"
     - more features + interactions for high p datasets
     - less for low p datasets
     - remember: original paper samples \# of features included from truncated geometric distribution, what is not mentioned is probability of this distribution
@@ -581,7 +591,7 @@ The authors further introduce a special initialisation of the group structures t
       * similar reasoning for pairwise interactions
   * individuals not in Pareto sets occassionally exhibit AUC < 0.5
     - this is not by mistake, usually AUC on binary target can simply be inverted (simply predict the opposite class)
-    - for us this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constraint)
+    - for us this cannot easily be inverted due to monotonicity constraints (weights cannot simply be multiplied by -1 if constrained)
     - could happen e.g. due to AdamW and weight clipping (employed to enforce monotonicity)
       * AdamW uses momentum
       * possible scenario: large momentum would yield negative weights, but after epoch they're clipped to [0,infty) + training stops due to early stopping
@@ -609,6 +619,7 @@ The authors further introduce a special initialisation of the group structures t
         - group structure space much more likely to be exhausted, i.e. more exploration of NN hps
     - NI, NNM consequently (bounded by NF, can never be more than max \# for respective \# included features) rather low
   * dhv contributions
+    % TODO: put explanation in line 400, don't introduce new topic here
     - measures contribution of an individual to the hypervolume, i.e. difference between hypervolume of entire pareto front vs hypervolume of pareto front without
       individual $\boldsymbol\lambda$: $\text{CON}_{\mathcal{P}}(\boldsymbol\lambda)=\text{HYP}(\mathcal{P})-\text{HYP}(\mathcal{P}\setminus\{\boldsymbol\lambda\})$,
       where $\text{HYP}(\mathcal{P})$ denotes the hypervolume induced by the pareto set $\mathcal{P}$ \citep[p. 384]{10.5555/1943267.1943271}
@@ -653,7 +664,7 @@ The authors further introduce a special initialisation of the group structures t
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
 
-\newpage
+%\newpage  % we are not to add page breaks
 
 \appendix
 \section{Software used}
