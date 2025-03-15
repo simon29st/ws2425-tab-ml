@@ -582,9 +582,9 @@ for the final experimental setup. Those show that there is no uptick in losses o
 the validation error.
 \\
 We trained in Sagemaker Notebooks on AWS and did initial training runs on
-ml.g4dn.xlarge\footnote{2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. https://aws.amazon.com/de/ec2/instance-types/g4/} instances with CUDA.
+ml.g4dn.xlarge\footnote{2 vCPUs, 16GiB RAM, 1 NVIDIA T4, cf. \url{https://aws.amazon.com/ec2/instance-types/g4/}} instances with CUDA.
 There was, however, no noticeable speed-up in model training compared to the much more economical
-ml.t3.medium\footnote{2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. https://aws.amazon.com/de/ec2/instance-types/t3/} instances, after which we decided to run the
+ml.t3.medium\footnote{2 Intel Xeon 8000 vCPUs, 4GiB RAM, cf. \url{https://aws.amazon.com/ec2/instance-types/t3/}} instances, after which we decided to run the
 final experimental setup on those.
 \\
 In total, we run our models on the same datasets as \citet[p. 544]{EAGGA}, except for the 2 largest ones ``philippine'' and ``gina'' (308 and 970 features, respectively),
@@ -597,12 +597,26 @@ This happened once for the dataset ``madeline'' after generation 9 and training 
 
 
 \section{Experimental Results and Discussion}
+
+% have two figures next to each other
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\linewidth]{../code/export/plot_test_dhvs.png}
-  \caption{TODO: caption}
-  \label{fig-test-dhvs}
+  % make figure wider than textwidth: https://tex.stackexchange.com/a/16584
+  \makebox[\textwidth][c]{\begin{minipage}{0.6\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{../code/export/plot_test_dhvs.png}
+      \caption{Dominated Hypervolume of NNs trained using XGBoost.}
+      \label{fig-test-dhvs}
+  \end{minipage}\hfill
+  \begin{minipage}{0.6\linewidth}
+      \centering
+      \includegraphics[width=\linewidth]{./EAGGA-XGB-dhv.PNG}
+      \caption{Mean dominated Hypervolume of $EAGGA_{\text{XGBoost}}$, $EAGGA_{\text{XGBoost}_{\text{md2}}}$, and union of competitors averaged over
+      10 replications. Bars represent standard errors. \citep[Figure 2, p. 544]{EAGGA}}
+      \label{fig-eagga-xgb-dhvs}
+  \end{minipage}}
 \end{figure}
+
 - preliminary
   * our implementation of feature + interaction detectors likely tend to include  % belongs in "general algorithm"
     - more features + interactions for high p datasets
